@@ -52,7 +52,7 @@ export default function Signup() {
                 <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-gold-500 text-white text-base font-black shadow-lift">
                   M
                 </span>
-                Mana<span className="text-brand-400">yata</span><span className="text-gold-400">.</span>
+                Many<span className="text-brand-400">ata</span><span className="text-gold-400">.</span>
               </Link>
 
               <h2 className="mt-12 text-3xl font-extrabold text-white leading-tight">
@@ -99,7 +99,7 @@ export default function Signup() {
                 M
               </span>
               <span className="text-slate-900">
-                Mana<span className="text-brand-600">yata</span><span className="text-gold-500">.</span>
+                Many<span className="text-brand-600">ata</span><span className="text-gold-500">.</span>
               </span>
             </Link>
 

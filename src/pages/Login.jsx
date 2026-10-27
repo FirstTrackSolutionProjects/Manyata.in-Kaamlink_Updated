@@ -35,7 +35,7 @@ export default function Login() {
                 <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-gold-500 text-white text-base font-black shadow-lift">
                   M
                 </span>
-                Mana<span className="text-brand-400">yata</span><span className="text-gold-400">.</span>
+                Many<span className="text-brand-400">ata</span>
               </Link>
 
               <h2 className="mt-12 text-3xl font-extrabold text-white leading-tight">
@@ -70,13 +70,13 @@ export default function Login() {
                 M
               </span>
               <span className="text-slate-900">
-                Mana<span className="text-brand-600">yata</span><span className="text-gold-500">.</span>
+                Many<span className="text-brand-600">ata</span><span className="text-gold-500">.</span>
               </span>
             </Link>
 
             <div className="text-center lg:text-left mb-8">
               <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-                Log in
+                Login
               </h1>
               <p className="mt-2 text-sm text-slate-500">
                 Welcome back! Please enter your details.
@@ -132,7 +132,7 @@ export default function Login() {
                 type="submit"
                 className="w-full rounded-xl bg-brand-600 py-3.5 text-sm font-bold text-white shadow-md hover:bg-brand-700 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group"
               >
-                Log in
+                Login
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </form>
