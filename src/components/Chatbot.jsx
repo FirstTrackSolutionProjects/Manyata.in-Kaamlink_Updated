@@ -110,7 +110,7 @@ const OPTIONS = {
     ],
     replies: {
       "Is the professional verified?":
-        "Yes — every Manayata professional passes an identity check, background verification, and a skills assessment before joining the platform.",
+        "Yes — every Manyata professional passes an identity check, background verification, and a skills assessment before joining the platform.",
       "Report unprofessional behavior":
         "We take this seriously. Please share the details and we'll investigate immediately, which may include suspending the professional from the platform.",
       "Safety concern":
@@ -224,7 +224,7 @@ export default function Chatbot() {
   }, [open]);
 
   const initChat = () => {
-    botSay("👋 Hi! Welcome to Manayata Support.", 300);
+    botSay("👋 Hi! Welcome to Manyata Support.", 300);
     setTimeout(() => {
       botSay("I'm here to help with bookings, services, payments, and more. How can I assist you today?", 300 + TYPING_DELAY + 400);
       setTimeout(() => {
@@ -272,7 +272,7 @@ export default function Chatbot() {
 
   const handleSolved = (answer) => {
     if (answer === "✅ Yes, resolved") {
-      botSay("That's great! 🎉 Thank you for choosing Manayata.", 0, { showRating: true });
+      botSay("That's great! 🎉 Thank you for choosing Manyata.", 0, { showRating: true });
       setTimeout(() => setShowRating(true), TYPING_DELAY + 200);
       setStep("DONE");
     } else if (answer === "🎧 Talk to live agent") {
@@ -406,7 +406,7 @@ export default function Chatbot() {
                   M
                 </div>
                 <div>
-                  <p className="text-white text-sm font-bold leading-none">Manayata Support</p>
+                  <p className="text-white text-sm font-bold leading-none">Manyata Support</p>
                   <p className="text-slate-400 text-[11px] flex items-center gap-1.5 mt-1">
                     <span className="w-2 h-2 rounded-full bg-green-500 inline-block shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
                     Online · Replies instantly
@@ -570,7 +570,7 @@ export default function Chatbot() {
             {/* Bottom bar */}
             <div className="px-4 py-2.5 border-t border-slate-100 flex items-center justify-center bg-white">
               <p className="text-slate-400 text-[10px] tracking-wide font-medium">
-                Powered by <span className="text-brand-600 font-bold">Manayata</span> Support
+                Powered by <span className="text-brand-600 font-bold">Manyata</span> Support
               </p>
             </div>
           </div>

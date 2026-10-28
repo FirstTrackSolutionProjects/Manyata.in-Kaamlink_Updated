@@ -44,7 +44,7 @@ export default function Footer() {
         {/* Brand column */}
         <div className="col-span-2">
         <p className="text-2xl font-display font-extrabold text-ivory">
-  Mana<span className="gradient-text">yata</span>
+  Man<span className="gradient-text">yata</span>
 </p>
 
           <p className="mt-3 text-sm leading-relaxed max-w-xs text-ivory/60">
@@ -116,13 +116,14 @@ export default function Footer() {
             <li>
               <a href="tel:+919876543210" className="flex items-center gap-2 hover:text-ivory transition-colors">
                 <Phone size={14} className="text-brand-400" />
-                +91 98765 43210
+                +91 8114721300
+
               </a>
             </li>
             <li>
               <a href="mailto:info@kaamlink.in" className="flex items-center gap-2 hover:text-ivory transition-colors">
                 <Mail size={14} className="text-brand-400" />
-                info@manayata.in
+                info@manyata.in
               </a>
             </li>
             <li>
@@ -135,7 +136,7 @@ export default function Footer() {
       </div>
 
       <div className="relative border-t border-white/10 py-5 text-center text-xs text-ivory/50">
-        © {new Date().getFullYear()} Manayata. All rights reserved.
+        © {new Date().getFullYear()} Manyata. All rights reserved.
       </div>
     </footer>
   );
