@@ -1,7 +1,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import manyataLogo from "../assets/Logo3.jpg";
+import manyataLogo from "../assets/logo3.jpg";
 import {
   Menu,
   X,
