@@ -15,6 +15,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import RefundCancellation from "./pages/Refund";
 import DataSecurity from "./pages/DataSecurity";
+import AuthorisedDealers from "./pages/AuthorisedDealers"; 
 
 import FAQ from "./components/FAQ";
 
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/refund" element={<RefundCancellation />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/data" element={<DataSecurity />} />
+          <Route path="/dealer" element={<AuthorisedDealers />} />
         </Route>
       </Routes>
     </>
