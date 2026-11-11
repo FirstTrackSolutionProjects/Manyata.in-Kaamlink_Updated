@@ -191,6 +191,10 @@ export default function Navbar() {
               alt="LogoDesign"
               className="h-11 w-auto max-w-[180px] shrink-0 object-contain transition-transform duration-300 group-hover:scale-105 sm:h-12"
             />
+            <span className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+              Many<span className="text-brand-600">ata</span>
+            </span>
+
           </Link>
 
 

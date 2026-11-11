@@ -187,7 +187,7 @@ export default function Footer() {
         {/* <span className="hidden sm:inline">|</span> */}
 
         <span className="block w-full break-words sm:w-auto">
-          © 2026 Manyata by{" "}
+          © 2026 Manyata Developed by{" "}
           <span className="font-semibold text-brand-400">
             First Track Solution Technologies
           </span>
