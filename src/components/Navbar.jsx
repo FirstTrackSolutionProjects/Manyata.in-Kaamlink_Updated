@@ -1,7 +1,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import manyataLogo from "../assets/logo3.jpg";
+import manyataLogo from "../assets/LogoDesign.png";
 import {
   Menu,
   X,
@@ -188,7 +188,7 @@ export default function Navbar() {
           >
             <img
               src={manyataLogo}
-              alt="Logo1"
+              alt="LogoDesign"
               className="h-11 w-auto max-w-[180px] shrink-0 object-contain transition-transform duration-300 group-hover:scale-105 sm:h-12"
             />
           </Link>

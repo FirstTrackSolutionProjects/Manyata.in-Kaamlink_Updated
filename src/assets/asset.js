@@ -36,7 +36,7 @@
 // import avatar4 from "./avatar-4.png";
 // import avatar5 from "./avatar-5.png";
 // import footerImg from "./footer-illustration.png";
-import logoImg from "../assets/logo.png"
+import logoImg from "../assets/LogoDesign.png"
 
 export const assets = {
   logoImg,
