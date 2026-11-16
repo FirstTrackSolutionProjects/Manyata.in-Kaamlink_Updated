@@ -151,6 +151,16 @@ export default function Footer() {
 
             <li>
               <a
+                href="tel:+919827951364"
+                className="flex items-center gap-2 transition-colors hover:text-ivory"
+              >
+                <Phone size={14} className="shrink-0 text-brand-400" />
+                +91 9827951364
+              </a>
+            </li>
+
+            <li>
+              <a
                 href="mailto:info@manyata.in"
                 className="flex items-center gap-2 transition-colors hover:text-ivory"
               >

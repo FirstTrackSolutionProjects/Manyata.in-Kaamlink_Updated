@@ -8,9 +8,11 @@ import {
   UserRound,
   LogIn,
   UserPlus,
+  LogOut,
   ArrowRight,
   ChevronDown,
 } from "lucide-react";
+import { clearSession, getSession } from "../lib/api";
 
 const NAV_LINKS = [
   { label: "Home", href: "/", isRoute: true },
@@ -24,6 +26,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [user, setUser] = useState(() => getSession().user);
 
   const accountRef = useRef(null);
   const mobileMenuRef = useRef(null);
@@ -31,6 +34,18 @@ export default function Navbar() {
 
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    setUser(getSession().user);
+  }, [location.pathname]);
+
+  const handleLogout = () => {
+    clearSession();
+    setUser(null);
+    setOpen(false);
+    setAccountOpen(false);
+    navigate("/");
+  };
 
   // Navbar shadow on scroll
   useEffect(() => {
@@ -272,56 +287,68 @@ export default function Navbar() {
               >
                 <div className="mb-1 border-b border-slate-100 px-3 py-3">
                   <p className="text-sm font-bold text-slate-900">
-                    Your Account
+                    {user?.full_name || "Your Account"}
                   </p>
 
                   <p className="mt-1 text-xs text-slate-500">
-                    Login or join Manyata
+                    {user ? "Manage your Manyata account" : "Login or join Manyata"}
                   </p>
                 </div>
 
-                <Link
-                  to="/login"
-                  onClick={handleNavClick}
-                  tabIndex={accountOpen ? 0 : -1}
-                  className="group flex items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-600"
-                >
-                  <span className="flex items-center gap-3">
-                    <LogIn size={17} />
-                    Login
-                  </span>
-
-                  <ArrowRight
-                    size={15}
-                    className="opacity-0 transition group-hover:translate-x-1 group-hover:opacity-100"
-                  />
-                </Link>
-
-                <Link
-                  to="/signup"
-                  onClick={handleNavClick}
-                  tabIndex={accountOpen ? 0 : -1}
-                  className="group flex items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-600"
-                >
-                  <span className="flex items-center gap-3">
-                    <UserPlus size={17} />
-                    Create Account
-                  </span>
-
-                  <ArrowRight
-                    size={15}
-                    className="opacity-0 transition group-hover:translate-x-1 group-hover:opacity-100"
-                  />
-                </Link>
+                {user ? (
+                  <>
+                    <Link
+                      to="/account"
+                      onClick={handleNavClick}
+                      tabIndex={accountOpen ? 0 : -1}
+                      className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-600"
+                    >
+                      <UserRound size={17} /> My Account
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      tabIndex={accountOpen ? 0 : -1}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-600"
+                    >
+                      <LogOut size={17} /> Log out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      to="/login"
+                      onClick={handleNavClick}
+                      tabIndex={accountOpen ? 0 : -1}
+                      className="group flex items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-600"
+                    >
+                      <span className="flex items-center gap-3">
+                        <LogIn size={17} /> Login
+                      </span>
+                      <ArrowRight size={15} className="opacity-0 transition group-hover:translate-x-1 group-hover:opacity-100" />
+                    </Link>
+                    <Link
+                      to="/signup"
+                      onClick={handleNavClick}
+                      tabIndex={accountOpen ? 0 : -1}
+                      className="group flex items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-600"
+                    >
+                      <span className="flex items-center gap-3">
+                        <UserPlus size={17} /> Create Account
+                      </span>
+                      <ArrowRight size={15} className="opacity-0 transition group-hover:translate-x-1 group-hover:opacity-100" />
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
 
             <Link
-              to="/login"
+              to={user ? "/account" : "/login"}
               onClick={handleNavClick}
               className="px-2 text-sm font-bold text-slate-700 transition hover:text-brand-600"
             >
-              Login
+              {user ? "My Account" : "Login"}
             </Link>
 
             <a
@@ -440,25 +467,45 @@ export default function Navbar() {
 
             {/* ACCOUNT ACTIONS */}
             <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-4">
-              <Link
-                to="/login"
-                tabIndex={open ? 0 : -1}
-                onClick={handleNavClick}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-700 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
-              >
-                <LogIn size={17} />
-                Login
-              </Link>
-
-              <Link
-                to="/signup"
-                tabIndex={open ? 0 : -1}
-                onClick={handleNavClick}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-brand-100 bg-brand-50 px-3 py-3 text-sm font-bold text-brand-700 transition hover:bg-brand-100"
-              >
-                <UserPlus size={17} />
-                Sign Up
-              </Link>
+              {user ? (
+                <>
+                  <Link
+                    to="/account"
+                    tabIndex={open ? 0 : -1}
+                    onClick={handleNavClick}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-700 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                  >
+                    <UserRound size={17} /> My Account
+                  </Link>
+                  <button
+                    type="button"
+                    tabIndex={open ? 0 : -1}
+                    onClick={handleLogout}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-brand-100 bg-brand-50 px-3 py-3 text-sm font-bold text-brand-700 transition hover:bg-brand-100"
+                  >
+                    <LogOut size={17} /> Log out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    tabIndex={open ? 0 : -1}
+                    onClick={handleNavClick}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-700 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                  >
+                    <LogIn size={17} /> Login
+                  </Link>
+                  <Link
+                    to="/signup"
+                    tabIndex={open ? 0 : -1}
+                    onClick={handleNavClick}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-brand-100 bg-brand-50 px-3 py-3 text-sm font-bold text-brand-700 transition hover:bg-brand-100"
+                  >
+                    <UserPlus size={17} /> Sign Up
+                  </Link>
+                </>
+              )}
             </div>
 
             {/* PRIMARY CTA */}

@@ -23,7 +23,7 @@ const METHODS = [
   {
     icon: Phone,
     title: "Call us",
-    detail: "8114721300 / 7008581300",
+    detail: "+91 8114721300 / +91 9827951364",
     note: "Mon–Sun, 7am–11pm",
     color: "bg-blue-50 text-blue-600",
   },
@@ -54,12 +54,12 @@ const OFFICES = [
   {
     name: "Main Office",
     address: "College Square, Soro, Balasore, Odisha - 756045",
-    phone: "8114721300 / 7008581300",
+    phone: "+91 8114721300 / +91 9827951364",
   },
   {
     name: "Sundargarh Branch",
     address: "At: Bisra, Rourkela, Sundargarh, Odisha - 770036",
-    phone: "8114721300",
+    phone: "+91 8114721300 / +91 9827951364",
   },
 ];
 
@@ -151,7 +151,7 @@ export default function Contact() {
 
           <div className="mt-9 flex flex-wrap justify-center gap-3">
             <a
-              href="tel:8114721300"
+              href="tel:+918114721300"
               className="inline-flex items-center gap-2 rounded-full bg-indigo-500 px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-950/30 transition-all hover:-translate-y-1 hover:bg-indigo-400"
             >
               <Phone size={17} />
@@ -605,7 +605,7 @@ export default function Contact() {
 //   {
 //     icon: Phone,
 //     title: "Call us",
-//     detail: "8114721300 / 7008581300",
+//     detail: "+91 8114721300 / +91 9827951364",
 //     note: "Mon–Sun, 7am–11pm",
 //   },
 //   {
@@ -633,12 +633,12 @@ export default function Contact() {
 //   {
 //     name: "Main Office",
 //     address: "College Square, Soro, Balasore, Odisha - 756045",
-//     phone: "8114721300 / 7008581300",
+//     phone: "+91 8114721300 / +91 9827951364",
 //   },
 //   {
 //     name: "Sundargarh Branch",
 //     address: "At: Bisra, Rourkela, Sundargarh, Odisha - 770036",
-//     phone: "8114721300",
+//     phone: "+91 8114721300 / +91 9827951364",
 //   },
 // ];
 
