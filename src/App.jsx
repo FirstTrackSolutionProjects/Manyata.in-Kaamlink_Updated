@@ -17,6 +17,9 @@ import Privacy from "./pages/Privacy";
 import RefundCancellation from "./pages/Refund";
 import DataSecurity from "./pages/DataSecurity";
 import AuthorisedDealers from "./pages/AuthorisedDealers"; 
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminGate from "./pages/admin/AdminGate";
 
 import FAQ from "./components/FAQ";
 
@@ -27,6 +30,8 @@ export default function App() {
       <ScrollToTop />
 
       <Routes>
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>} />
         <Route element={<Layout />}>
           {/* Main Pages */}
           <Route index element={<Home />} />

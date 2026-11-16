@@ -11,6 +11,7 @@
     "db:migrate:undo": "sequelize-cli --options-path .sequelizerc.cjs db:migrate:undo",
     "db:migrate:undo:all": "sequelize-cli --options-path .sequelizerc.cjs db:migrate:undo:all",
     "db:seed": "sequelize-cli --options-path .sequelizerc.cjs db:seed:all",
+    "admin:create": "node src/scripts/create-admin.js",
     "db:seed:undo": "sequelize-cli --options-path .sequelizerc.cjs db:seed:undo:all",
     "db:reset": "npm run db:migrate:undo:all && npm run db:migrate && npm run db:seed"
   },
