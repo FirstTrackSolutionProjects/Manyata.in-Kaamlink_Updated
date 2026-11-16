@@ -49,12 +49,6 @@ export default function Navbar() {
     };
   }, []);
 
-  // Close menus after navigation
-  useEffect(() => {
-    setOpen(false);
-    setAccountOpen(false);
-  }, [location.pathname, location.hash]);
-
   // Close menus on outside click and Escape
   useEffect(() => {
     const handlePointerDown = (event) => {

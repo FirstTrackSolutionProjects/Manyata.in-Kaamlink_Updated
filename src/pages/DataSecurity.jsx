@@ -12,27 +12,27 @@ import {
 } from "lucide-react";
 
 const BADGES = [
-  { icon: Lock, label: "256-bit encryption", note: "In transit and at rest" },
-  { icon: CreditCard, label: "No card data stored", note: "Handled by certified processors" },
+  { icon: Lock, label: "Protected passwords", note: "Hashed before storage" },
+  { icon: CreditCard, label: "No card details collected", note: "Card numbers are not stored" },
   { icon: Eye, label: "Minimal data sharing", note: "Only what's needed, per booking" },
-  { icon: Activity, label: "24/7 monitoring", note: "Continuous threat detection" },
+  { icon: Activity, label: "Protected API access", note: "Account routes require sign-in" },
 ];
 
 const SECTIONS = [
   {
     icon: Lock,
     heading: "Encryption, everywhere",
-    body: "All data sent between your device and KaamLink is encrypted using HTTPS/TLS, so it can't be read in transit. Sensitive data is also encrypted at rest in our databases, using industry-standard encryption practices.",
+    body: "Use the secure HTTPS version of Manyata when sending information. Account passwords are hashed before they are stored, and private account routes require a valid sign-in.",
   },
   {
     icon: CreditCard,
     heading: "Payment security",
-    body: "Payments are processed by PCI-DSS compliant third-party payment partners. KaamLink never stores your full card number, CVV, or banking credentials on our own servers.",
+    body: "Manyata does not collect or store card numbers, CVVs, or online banking credentials on this website.",
   },
   {
     icon: UserCog,
     heading: "Strict access controls",
-    body: "The professional assigned to your booking only sees the details needed to complete the job — your name, service address, and contact number. Internal access to customer data at KaamLink is restricted to authorized staff on a need-to-know basis, and every access is logged.",
+    body: "Booking details are associated with the signed-in customer account. Private booking and administration routes require an authenticated account with the appropriate role.",
   },
   {
     icon: Server,
@@ -128,8 +128,8 @@ export default function DataSecurity() {
                 If you're a security researcher or have found a potential
                 vulnerability, we want to hear from you. Please report it
                 responsibly to{" "}
-                <span className="text-pink-600 font-medium">security@kaamlink.in</span>{" "}
-                and our team will respond promptly.
+                <a href="mailto:info@manyata.in?subject=Security%20Concern" className="text-pink-600 font-medium">info@manyata.in</a>{" "}
+                and our team will respond.
               </p>
             </div>
           </div>

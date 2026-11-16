@@ -15,7 +15,6 @@ export default function ScrollToTop() {
       behavior: "instant",
     });
 
-    setVisible(false);
   }, [pathname]);
 
   // Show scroll button after scrolling down
