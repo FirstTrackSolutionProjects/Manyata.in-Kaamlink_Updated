@@ -484,7 +484,7 @@ export default function About() {
 
       {/* ==================== TEAM SECTION ==================== */}
 
-      <section className="py-14 sm:py-20 lg:py-24">
+      {/* <section className="py-14 sm:py-20 lg:py-24">
 
         <div
           ref={teamRef}
@@ -553,7 +553,7 @@ export default function About() {
 
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* ==================== ANIMATED STATS SECTION ==================== */}
 
