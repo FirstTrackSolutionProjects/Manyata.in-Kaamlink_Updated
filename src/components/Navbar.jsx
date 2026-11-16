@@ -12,7 +12,7 @@ import {
   ArrowRight,
   ChevronDown,
 } from "lucide-react";
-import { clearSession, getSession } from "../lib/api";
+import { getSession, logoutSession } from "../lib/api";
 
 const NAV_LINKS = [
   { label: "Home", href: "/", isRoute: true },
@@ -40,8 +40,8 @@ export default function Navbar() {
     setUser(getSession().user);
   }, [location.pathname]);
 
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await logoutSession();
     setUser(null);
     setOpen(false);
     setAccountOpen(false);

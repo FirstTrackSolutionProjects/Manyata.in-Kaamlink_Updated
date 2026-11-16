@@ -6,7 +6,7 @@ import {
   House, Mail, MapPinned, MessageSquareText, Plus, RefreshCw, Search, ShieldCheck,
   Users, X,
 } from "lucide-react";
-import { apiRequest, clearSession, getSession } from "../../lib/api";
+import { apiRequest, getSession, logoutSession } from "../../lib/api";
 
 const sections = [
   ["overview", "Overview", LayoutDashboard], ["bookings", "Bookings", CalendarDays],
@@ -77,7 +77,7 @@ export default function AdminDashboard() {
     } catch (requestError) { handleRequestError(requestError); }
   };
 
-  const logout = () => { clearSession(); navigate("/admin/login", { replace: true }); };
+  const logout = async () => { await logoutSession(); navigate("/admin/login", { replace: true }); };
   const heading = sections.find(([key]) => key === section)?.[1] || "Overview";
   const visible = (items, fields) => (Array.isArray(items) ? items : []).filter((item) => !search || fields.some((key) => String(key.split(".").reduce((value, part) => value?.[part], item) ?? "").toLowerCase().includes(search.toLowerCase())));
 

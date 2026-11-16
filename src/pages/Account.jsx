@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { apiRequest, clearSession, getSession } from "../lib/api";
+import { apiRequest, getSession, logoutSession } from "../lib/api";
 
 export default function Account() {
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ export default function Account() {
   }, [navigate, session.token]);
 
   const logout = () => {
-    clearSession();
+    logoutSession();
     navigate("/");
   };
 
