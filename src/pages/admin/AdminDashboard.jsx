@@ -89,7 +89,9 @@ export default function AdminDashboard() {
         </header>
         {error && <div role="alert" className="mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><X size={17} />{error}</div>}
         {notice && <div role="status" className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"><Check size={17} />{notice}</div>}
-        {loading ? <div className="rounded-2xl bg-white p-12 text-center text-sm text-slate-500">Loading {heading.toLowerCase()}…</div> : (
+        {loading ? <div className="rounded-2xl bg-white p-12 text-center text-sm text-slate-500">Loading {heading.toLowerCase()}…</div> : error && !data ? (
+          <section role="alert" className="rounded-2xl border border-amber-200 bg-white p-8 text-center shadow-sm"><h2 className="text-lg font-extrabold">Could not load {heading.toLowerCase()}</h2><p className="mt-2 text-sm text-slate-600">{error}</p><button onClick={load} className="mt-5 rounded-xl bg-violet-700 px-4 py-2.5 text-sm font-bold text-white">Try again</button></section>
+        ) : (
           <>
             {section === "overview" && <Overview data={data} setSection={setSection} />}
             {section === "bookings" && <Bookings data={data} rows={visible(data?.bookings, ["id", "status", "user.full_name", "user.phone", "service.name"])} mutate={mutate} />}
@@ -107,14 +109,15 @@ export default function AdminDashboard() {
   );
 }
 
-function Overview({ data = {}, setSection }) {
+function Overview({ data, setSection }) {
+  const stats = data || {};
   const cards = [
-    ["Bookings", data.bookings, CalendarDays, "bookings"], ["Awaiting action", data.pendingBookings, Activity, "bookings"],
-    ["Customers", data.customers, Users, "customers"], ["Professionals", data.professionals, BadgeCheck, "professionals"],
-    ["Active services", data.services, BriefcaseBusiness, "services"], ["Paid revenue", `₹${Number(data.paidRevenue || 0).toLocaleString("en-IN")}`, Banknote, "bookings"],
-    ["New messages", data.newMessages, Mail, "contact"], ["Open tickets", data.openTickets, MessageSquareText, "tickets"],
+    ["Bookings", stats.bookings, CalendarDays, "bookings"], ["Awaiting action", stats.pendingBookings, Activity, "bookings"],
+    ["Customers", stats.customers, Users, "customers"], ["Professionals", stats.professionals, BadgeCheck, "professionals"],
+    ["Active services", stats.services, BriefcaseBusiness, "services"], ["Paid revenue", `₹${Number(stats.paidRevenue || 0).toLocaleString("en-IN")}`, Banknote, "bookings"],
+    ["New messages", stats.newMessages, Mail, "contact"], ["Open tickets", stats.openTickets, MessageSquareText, "tickets"],
   ];
-  return <div className="space-y-6"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(([label, value, Icon, dest]) => <button key={label} onClick={() => setSection(dest)} className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-violet-200"><div className="flex items-center justify-between"><span className="text-sm font-semibold text-slate-500">{label}</span><span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-50 text-violet-700"><Icon size={19} /></span></div><p className="mt-4 text-3xl font-black">{value ?? "—"}</p></button>)}</div><section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="mb-4 text-lg font-extrabold">Recent bookings</h2><BookingTable rows={data.recentBookings || []} /></section></div>;
+  return <div className="space-y-6"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(([label, value, Icon, dest]) => <button key={label} onClick={() => setSection(dest)} className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-violet-200"><div className="flex items-center justify-between"><span className="text-sm font-semibold text-slate-500">{label}</span><span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-50 text-violet-700"><Icon size={19} /></span></div><p className="mt-4 text-3xl font-black">{value ?? "—"}</p></button>)}</div><section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="mb-4 text-lg font-extrabold">Recent bookings</h2><BookingTable rows={stats.recentBookings || []} /></section></div>;
 }
 
 function Panel({ title, children, tools }) { return <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-5"><h2 className="text-lg font-extrabold">{title}</h2>{tools}</div><div className="overflow-x-auto">{children}</div></section>; }
