@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Send, Star, Phone, Copy, Check, RotateCcw } from "lucide-react";
+import { apiRequest, getSession } from "../lib/api";
 
 const BOT_DELAY = 600;
 const TYPING_DELAY = 900;
@@ -190,11 +191,9 @@ export default function Chatbot() {
   const [rated, setRated] = useState(false);
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [bookingId, setBookingId] = useState("");
-  const [ticketSubmitted, setTicketSubmitted] = useState(false);
+  const [ticketSubmitting, setTicketSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [unread, setUnread] = useState(0);
-
-  const TICKET_REF = "MNY-" + Math.random().toString(36).slice(2, 8).toUpperCase();
 
   const scrollToBottom = () => bottomRef.current?.scrollIntoView({ behavior: "smooth" });
 
@@ -216,13 +215,6 @@ export default function Chatbot() {
 
   useEffect(() => { scrollToBottom(); }, [messages, isTyping, currentOptions]);
 
-  useEffect(() => {
-    if (open) {
-      setUnread(0);
-      if (messages.length === 0) initChat();
-    }
-  }, [open]);
-
   const initChat = () => {
     botSay("👋 Hi! Welcome to Manyata Support.", 300);
     setTimeout(() => {
@@ -234,6 +226,12 @@ export default function Chatbot() {
     }, 0);
   };
 
+  const openChat = () => {
+    setUnread(0);
+    if (messages.length === 0) initChat();
+    setOpen(true);
+  };
+
   const handleOption = (option) => {
     const label = typeof option === "string" ? option : option.label;
     addUser(label);
@@ -242,6 +240,7 @@ export default function Chatbot() {
 
     if (step === "MAIN") {
       if (label === "Other") {
+        setCurrentCategory("Other");
         botSay("Please describe your issue below and our team will get back to you:");
         setTimeout(() => setShowInput(true), BOT_DELAY + TYPING_DELAY + 200);
       } else {
@@ -292,19 +291,30 @@ export default function Chatbot() {
 
   const handleAgent = () => {};
 
-  const submitTicket = () => {
+  const submitTicket = async () => {
     if (!bookingId.trim()) return;
-    addUser(`Booking ID: ${bookingId}`);
-    setShowTicketForm(false);
-    setBookingId("");
-    botSay(
-      `✅ Ticket raised successfully! Your ticket ID is **${TICKET_REF}**. Our support team will contact you within 2 hours.`,
-      0,
-      { ticketRef: TICKET_REF }
-    );
-    setTicketSubmitted(true);
-    setTimeout(() => setShowRating(true), TYPING_DELAY + 500);
-    setStep("DONE");
+    setTicketSubmitting(true);
+    try {
+      const session = getSession();
+      const conversation = messages.filter((message) => message.from === "user").map((message) => message.text);
+      conversation.push(`Booking ID: ${bookingId.trim()}`);
+      const result = await apiRequest("/support/tickets", {
+        method: "POST",
+        token: session.token,
+        body: JSON.stringify({ booking_reference: bookingId.trim(), category: currentCategory, description: conversation.join("\n") }),
+      });
+      const createdTicketRef = result.ticket_ref;
+      addUser(`Booking ID: ${bookingId.trim()}`);
+      setShowTicketForm(false);
+      setBookingId("");
+      botSay(`✅ Your support request is saved. Ticket ID: ${createdTicketRef}.`, 0, { ticketRef: createdTicketRef });
+      setTimeout(() => setShowRating(true), TYPING_DELAY + 500);
+      setStep("DONE");
+    } catch (error) {
+      botSay(error.message, 0);
+    } finally {
+      setTicketSubmitting(false);
+    }
   };
 
   const submitFreeText = () => {
@@ -319,8 +329,8 @@ export default function Chatbot() {
     }, TYPING_DELAY + 300);
   };
 
-  const copyTicket = () => {
-    navigator.clipboard.writeText(TICKET_REF).catch(() => {});
+  const copyTicket = (reference) => {
+    navigator.clipboard.writeText(reference).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -337,7 +347,6 @@ export default function Chatbot() {
     setRated(false);
     setShowTicketForm(false);
     setBookingId("");
-    setTicketSubmitted(false);
     setTimeout(() => initChat(), 100);
   };
 
@@ -366,7 +375,7 @@ export default function Chatbot() {
           <div className="relative">
             <div className="pulse-ring absolute inset-0 rounded-full bg-brand-500 pointer-events-none" />
             <button
-              onClick={() => setOpen(true)}
+              onClick={openChat}
               className="relative w-14 h-14 rounded-full bg-gradient-to-br from-brand-500 to-brand-600 text-white flex items-center justify-center shadow-[0_8px_32px_rgba(79,70,229,0.4)] transition-all active:scale-95 hover:shadow-[0_8px_40px_rgba(79,70,229,0.55)] hover:-translate-y-1"
             >
               {/* Home / service chat icon */}
@@ -456,7 +465,7 @@ export default function Chatbot() {
                     {msg.ticketRef && (
                       <div className="mt-3 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
                         <span className="text-brand-600 text-xs font-black">{msg.ticketRef}</span>
-                        <button onClick={copyTicket} className="ml-auto text-slate-400 hover:text-brand-600 transition-colors">
+                        <button onClick={() => copyTicket(msg.ticketRef)} className="ml-auto text-slate-400 hover:text-brand-600 transition-colors">
                           {copied ? <Check size={14} /> : <Copy size={14} />}
                         </button>
                       </div>
@@ -532,6 +541,7 @@ export default function Chatbot() {
                   <p className="text-brand-600 text-[10px] font-bold tracking-widest uppercase">Raise a Ticket</p>
                   <input
                     value={bookingId}
+                    disabled={ticketSubmitting}
                     onChange={(e) => setBookingId(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && submitTicket()}
                     placeholder="Enter Booking ID (e.g. MN-12345)"
@@ -539,9 +549,10 @@ export default function Chatbot() {
                   />
                   <button
                     onClick={submitTicket}
+                    disabled={ticketSubmitting}
                     className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm py-2.5 rounded-xl transition-all active:scale-[0.98]"
                   >
-                    Submit Ticket
+                    {ticketSubmitting ? "Submitting..." : "Submit Ticket"}
                   </button>
                 </div>
               )}

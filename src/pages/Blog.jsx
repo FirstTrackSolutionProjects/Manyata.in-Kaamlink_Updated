@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Search, Clock, Mail, ArrowRight, BookOpen, X } from "lucide-react";
 import useReveal from "../hooks/useReveal";
 import { blogFeatured, blogCovers } from "../assets/asset";
+import { apiRequest } from "../lib/api";
 
 const CATEGORIES = [
   "All",
@@ -86,6 +87,8 @@ export default function Blog() {
   const [query, setQuery] = useState("");
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [subscribeError, setSubscribeError] = useState("");
+  const [subscribing, setSubscribing] = useState(false);
 
   const [headerRef, headerIn] = useReveal();
   const [gridRef, gridIn] = useReveal();
@@ -104,14 +107,20 @@ export default function Blog() {
     });
   }, [category, query]);
 
-  const handleSubscribe = (event) => {
+  const handleSubscribe = async (event) => {
     event.preventDefault();
-
     if (!email.trim()) return;
-
-    // Connect your newsletter API here before showing success.
-    setSubscribed(true);
-    setEmail("");
+    setSubscribeError("");
+    setSubscribing(true);
+    try {
+      await apiRequest("/newsletter", { method: "POST", body: JSON.stringify({ email }) });
+      setSubscribed(true);
+      setEmail("");
+    } catch (error) {
+      setSubscribeError(error.message);
+    } finally {
+      setSubscribing(false);
+    }
   };
 
   const clearFilters = () => {
@@ -427,8 +436,7 @@ export default function Blog() {
                 role="status"
                 className="mx-auto mt-8 max-w-md rounded-2xl border border-emerald-300/20 bg-white/10 px-5 py-4 text-sm font-medium text-emerald-100"
               >
-                Thanks for your interest! Newsletter delivery needs to be
-                connected to your email service.
+                Thanks! Your email is now on the Manyata newsletter list.
               </div>
             ) : (
               <form
@@ -448,13 +456,15 @@ export default function Blog() {
 
                 <button
                   type="submit"
+                  disabled={subscribing}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-emerald-400 px-7 py-3.5 text-sm font-bold text-[#102C25] transition hover:bg-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-200/30"
                 >
-                  Subscribe
+                  {subscribing ? "Saving..." : "Subscribe"}
                   <ArrowRight size={17} />
                 </button>
               </form>
             )}
+            {subscribeError && <p role="alert" className="mx-auto mt-3 max-w-lg text-sm text-red-200">{subscribeError}</p>}
 
             <p className="mt-4 text-xs leading-5 text-slate-400">
               Helpful emails only. No spam. Unsubscribe whenever you like.

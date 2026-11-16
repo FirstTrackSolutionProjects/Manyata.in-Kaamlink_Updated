@@ -10,6 +10,7 @@ import Blog from "./pages/Blog";
 import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Account from "./pages/Account";
 
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
@@ -36,6 +37,7 @@ export default function App() {
           {/* Authentication Pages */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/account" element={<Account />} />
 
           {/* FAQ Page */}
           <Route path="/faq" element={<FAQ />} />

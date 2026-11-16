@@ -1,14 +1,7 @@
 import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock, User, Phone, ShieldCheck, Star, ArrowRight, CheckCircle2 } from "lucide-react";
-
-function GoogleIcon(props) {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" {...props}>
-      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.2s2.7-6.2 6-6.2c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.2 14.6 2.2 12 2.2 6.9 2.2 2.8 6.4 2.8 11.5S6.9 20.8 12 20.8c6.9 0 8.9-4.8 8.9-7.3 0-.5-.1-.9-.1-1.3H12z"/>
-    </svg>
-  );
-}
+import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff, Mail, Lock, User, Phone, Star, ArrowRight, CheckCircle2 } from "lucide-react";
+import { apiRequest, saveSession } from "../lib/api";
 
 function getStrength(password) {
   if (!password) return 0;
@@ -27,12 +20,39 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const strength = useMemo(() => getStrength(password), [password]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Hook up real account creation here later
+    setError("");
+    const form = new FormData(e.currentTarget);
+    const formPassword = form.get("password");
+    if (formPassword !== form.get("confirmPassword")) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await apiRequest("/auth/signup", {
+        method: "POST",
+        body: JSON.stringify({
+          full_name: form.get("full_name"),
+          phone: form.get("phone"),
+          email: form.get("email"),
+          password: formPassword,
+        }),
+      });
+      saveSession(data);
+      navigate("/account");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -113,6 +133,7 @@ export default function Signup() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-bold text-slate-700 mb-1.5 block">Full name</label>
@@ -120,6 +141,7 @@ export default function Signup() {
                     <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
+                      name="full_name"
                       required
                       placeholder="Priya Sharma"
                       className="w-full rounded-xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-50 focus:bg-white transition-all placeholder:text-slate-400"
@@ -132,6 +154,7 @@ export default function Signup() {
                     <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="tel"
+                      name="phone"
                       required
                       placeholder="+91 98765 43210"
                       className="w-full rounded-xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-50 focus:bg-white transition-all placeholder:text-slate-400"
@@ -146,6 +169,7 @@ export default function Signup() {
                   <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="email"
+                    name="email"
                     required
                     placeholder="you@example.com"
                     className="w-full rounded-xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-50 focus:bg-white transition-all placeholder:text-slate-400"
@@ -159,6 +183,7 @@ export default function Signup() {
                   <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type={showPassword ? "text" : "password"}
+                    name="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -199,6 +224,7 @@ export default function Signup() {
                   <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type={showConfirm ? "text" : "password"}
+                    name="confirmPassword"
                     required
                     placeholder="Re-enter your password"
                     className="w-full rounded-xl bg-slate-50 border border-slate-200 pl-11 pr-11 py-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-50 focus:bg-white transition-all placeholder:text-slate-400"
@@ -229,24 +255,13 @@ export default function Signup() {
 
               <button
                 type="submit"
+                disabled={loading}
                 className="w-full rounded-xl bg-brand-600 py-3.5 text-sm font-bold text-white shadow-md hover:bg-brand-700 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group mt-4"
               >
-                Create account
+                {loading ? "Creating account..." : "Create account"}
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </form>
-
-            <div className="flex items-center gap-3 my-6">
-              <div className="h-px flex-1 bg-slate-200" />
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Or continue with</span>
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
-
-            <div className="grid grid-cols-1 gap-3">
-              <button className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3.5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm">
-                <GoogleIcon /> Google
-              </button>
-            </div>
 
             <p className="mt-8 text-center text-sm text-slate-500">
               Already have an account?{" "}

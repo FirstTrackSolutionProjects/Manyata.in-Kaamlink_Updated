@@ -14,20 +14,25 @@ import {
 } from "lucide-react";
 
 import useReveal from "../hooks/useReveal";
+import { apiRequest } from "../lib/api";
 
 export default function Hero() {
   const [ref, inView] = useReveal();
   const [pincode, setPincode] = useState("");
+  const [availability, setAvailability] = useState(null);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!/^[1-9][0-9]{5}$/.test(pincode)) {
-      return;
+    setAvailability(null);
+    setCheckingAvailability(true);
+    try {
+      setAvailability(await apiRequest(`/availability/${pincode}`));
+    } catch (error) {
+      setAvailability({ available: false, message: error.message });
+    } finally {
+      setCheckingAvailability(false);
     }
-
-    // Connect your service-availability API here.
-    // A valid pincode alone does not confirm service availability.
   };
 
   return (
@@ -113,13 +118,14 @@ export default function Hero() {
               type="submit"
               className="group inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-md transition duration-300 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 sm:w-auto sm:shrink-0 sm:rounded-full"
             >
-              Check availability
+              {checkingAvailability ? "Checking..." : "Check availability"}
               <ArrowRight
                 size={17}
                 className="transition-transform duration-300 group-hover:translate-x-1"
               />
             </button>
           </form>
+          {availability && <p role="status" className={`mt-3 text-sm font-semibold ${availability.available ? "text-emerald-700" : "text-slate-600"}`}>{availability.message}</p>}
 
           <p className="mt-2 px-1 text-xs leading-5 text-slate-400">
             Enter your PIN code to start checking service coverage.

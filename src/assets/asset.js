@@ -1,5 +1,5 @@
 /**
- * KaamLink — image asset registry
+ * Manyata image asset registry
  * ---------------------------------------------------------------
  * Every image used across the landing page is registered here.
  * Right now each entry points to a PLACEHOLDER (placehold.co) sized
@@ -105,7 +105,7 @@ export const aboutHero = {
   src: "https://placehold.co/600x600/FCE7F3/DB2777?text=About+Hero",
   width: 600,
   height: 600,
-  alt: "Illustration representing the KaamLink team and mission",
+  alt: "Illustration representing the Manyata team and mission",
 };
 
 // About page — leadership team, square headshots

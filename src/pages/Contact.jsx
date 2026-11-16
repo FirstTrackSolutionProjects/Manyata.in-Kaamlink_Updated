@@ -17,6 +17,7 @@ import {
   CalendarCheck,
 } from "lucide-react";
 import useReveal from "../hooks/useReveal";
+import { apiRequest } from "../lib/api";
 
 const METHODS = [
   {
@@ -85,14 +86,37 @@ const MINI_FAQS = [
 export default function Contact() {
   const [openFaq, setOpenFaq] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [sending, setSending] = useState(false);
 
   const [headerRef, headerIn] = useReveal();
   const [methodsRef, methodsIn] = useReveal();
   const [formRef, formIn] = useReveal();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitted(true);
+    const formElement = e.currentTarget;
+    setFormError("");
+    setSending(true);
+    const form = new FormData(formElement);
+    try {
+      await apiRequest("/contact", {
+        method: "POST",
+        body: JSON.stringify({
+          name: form.get("name"),
+          phone: form.get("phone"),
+          email: form.get("email"),
+          subject: form.get("subject"),
+          message: form.get("message"),
+        }),
+      });
+      setSubmitted(true);
+      formElement.reset();
+    } catch (error) {
+      setFormError(error.message);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -230,6 +254,7 @@ export default function Contact() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
+                  {formError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{formError}</p>}
 
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div>
@@ -238,6 +263,7 @@ export default function Contact() {
                       </label>
                       <input
                         type="text"
+                        name="name"
                         required
                         placeholder="Priya Sharma"
                         className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
@@ -250,6 +276,7 @@ export default function Contact() {
                       </label>
                       <input
                         type="tel"
+                        name="phone"
                         required
                         placeholder="+91 98765 43210"
                         className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
@@ -263,6 +290,7 @@ export default function Contact() {
                     </label>
                     <input
                       type="email"
+                      name="email"
                       required
                       placeholder="you@example.com"
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
@@ -275,6 +303,7 @@ export default function Contact() {
                     </label>
                     <select
                       required
+                      name="subject"
                       defaultValue=""
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm text-slate-700 outline-none transition-all focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
                     >
@@ -295,6 +324,7 @@ export default function Contact() {
                     </label>
                     <textarea
                       required
+                      name="message"
                       rows={5}
                       placeholder="Tell us how we can help..."
                       className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
@@ -303,9 +333,10 @@ export default function Contact() {
 
                   <button
                     type="submit"
+                    disabled={sending}
                     className="group inline-flex w-full items-center justify-center gap-3 rounded-full bg-indigo-600 px-8 py-4 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition-all duration-300 hover:-translate-y-1 hover:bg-indigo-700 sm:w-auto"
                   >
-                    Send message
+                    {sending ? "Sending..." : "Send message"}
                     <Send size={17} className="transition-transform group-hover:translate-x-1" />
                   </button>
                 </form>

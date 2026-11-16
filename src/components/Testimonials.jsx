@@ -186,10 +186,7 @@ export default function Testimonials() {
     };
   }, []);
 
-  // Keep page index valid after responsive layout changes
-  useEffect(() => {
-    setPage((current) => Math.min(current, pages.length - 1));
-  }, [pages.length]);
+  const visiblePage = Math.min(page, pages.length - 1);
 
   // Auto-rotate testimonials
   useEffect(() => {
@@ -322,13 +319,13 @@ export default function Testimonials() {
               className="flex items-stretch transition-transform duration-500 ease-in-out motion-reduce:transition-none"
               style={{
                 width: `${pages.length * 100}%`,
-                transform: `translateX(-${(100 / pages.length) * page}%)`,
+                transform: `translateX(-${(100 / pages.length) * visiblePage}%)`,
               }}
             >
               {pages.map((group, pageIndex) => (
                 <div
                   key={`${itemsPerPage}-${pageIndex}`}
-                  aria-hidden={pageIndex !== page}
+                  aria-hidden={pageIndex !== visiblePage}
                   style={{ width: `${100 / pages.length}%` }}
                   className="min-w-0 shrink-0 px-0.5 pb-5 pt-2 sm:px-1"
                 >
@@ -359,7 +356,7 @@ export default function Testimonials() {
         <div className="mt-5 flex flex-col items-center justify-center gap-5 sm:mt-7 sm:flex-row sm:justify-between">
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold tabular-nums text-slate-500">
-              {String(page + 1).padStart(2, "0")}
+              {String(visiblePage + 1).padStart(2, "0")}
               <span className="mx-1.5 text-slate-300">/</span>
               {String(pages.length).padStart(2, "0")}
             </span>
@@ -371,9 +368,9 @@ export default function Testimonials() {
                   type="button"
                   onClick={() => goTo(index)}
                   aria-label={`Go to testimonial slide ${index + 1}`}
-                  aria-current={page === index ? "step" : undefined}
+                  aria-current={visiblePage === index ? "step" : undefined}
                   className={`h-2 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${
-                    page === index
+                    visiblePage === index
                       ? "w-8 bg-brand-600"
                       : "w-2 bg-slate-300 hover:bg-slate-400"
                   }`}

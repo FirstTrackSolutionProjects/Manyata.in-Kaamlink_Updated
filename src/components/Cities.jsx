@@ -89,7 +89,7 @@ export default function Cities() {
 
         {/* City cards */}
         <div className="mt-8 grid grid-cols-2 gap-3 sm:mt-10 sm:grid-cols-3 sm:gap-4 lg:gap-5">
-          {CITIES.map((city, index) => (
+          {CITIES.map((city) => (
             <div
               key={city}
               className="group flex min-h-[76px] min-w-0 items-center gap-2.5 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-lg hover:shadow-brand-900/5 sm:min-h-[92px] sm:gap-3 sm:rounded-3xl sm:p-5"

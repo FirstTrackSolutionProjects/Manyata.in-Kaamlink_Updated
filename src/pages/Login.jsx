@@ -1,21 +1,31 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, ShieldCheck, Star, ArrowRight } from "lucide-react";
-
-function GoogleIcon(props) {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" {...props}>
-      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.2s2.7-6.2 6-6.2c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.2 14.6 2.2 12 2.2 6.9 2.2 2.8 6.4 2.8 11.5S6.9 20.8 12 20.8c6.9 0 8.9-4.8 8.9-7.3 0-.5-.1-.9-.1-1.3H12z"/>
-    </svg>
-  );
-}
+import { apiRequest, saveSession } from "../lib/api";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Hook up real authentication here later
+    setError("");
+    setLoading(true);
+    const form = new FormData(e.currentTarget);
+    try {
+      const data = await apiRequest("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
+      });
+      saveSession(data);
+      navigate("/account");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -84,12 +94,14 @@ export default function Login() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
+              {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
               <div>
                 <label className="text-xs font-bold text-slate-700 mb-1.5 block">Email address</label>
                 <div className="relative">
                   <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="email"
+                    name="email"
                     required
                     placeholder="you@example.com"
                     className="w-full rounded-xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3.5 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-50 focus:bg-white transition-all placeholder:text-slate-400"
@@ -103,6 +115,7 @@ export default function Login() {
                   <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type={showPassword ? "text" : "password"}
+                    name="password"
                     required
                     placeholder="••••••••"
                     className="w-full rounded-xl bg-slate-50 border border-slate-200 pl-11 pr-11 py-3.5 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-50 focus:bg-white transition-all placeholder:text-slate-400"
@@ -123,31 +136,20 @@ export default function Login() {
                   <input type="checkbox" className="h-4 w-4 rounded border-slate-300 accent-brand-600" />
                   Remember me
                 </label>
-                <Link to="/login" className="font-bold text-brand-600 hover:text-brand-700 transition-colors">
-                  Forgot password?
+                <Link to="/contact" className="font-bold text-brand-600 hover:text-brand-700 transition-colors">
+                  Need help?
                 </Link>
               </div>
 
               <button
                 type="submit"
+                disabled={loading}
                 className="w-full rounded-xl bg-brand-600 py-3.5 text-sm font-bold text-white shadow-md hover:bg-brand-700 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group"
               >
-                Login
+                {loading ? "Logging in..." : "Login"}
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </form>
-
-            <div className="flex items-center gap-3 my-6">
-              <div className="h-px flex-1 bg-slate-200" />
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Or continue with</span>
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
-
-            <div className="grid grid-cols-1 gap-3">
-              <button className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3.5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm">
-                <GoogleIcon /> Google
-              </button>
-            </div>
 
             <p className="mt-8 text-center text-sm text-slate-500">
               Don't have an account?{" "}

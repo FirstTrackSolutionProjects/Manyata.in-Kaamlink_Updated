@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { Link } from "react-router-dom";
 import {
   Sparkles,
   Bug,
@@ -19,6 +20,7 @@ import {
   ShieldCheck,
   CheckCircle2,
 } from "lucide-react";
+import { apiRequest, getSession } from "../lib/api";
 
 const SERVICES = [
   {
@@ -353,9 +355,51 @@ function ServiceCard({ service, onBook }) {
 }
 
 export default function Services({ onBookService }) {
-  const pages = useMemo(() => chunk(SERVICES, 3), []);
+  const [services, setServices] = useState(SERVICES);
+  const [bookingService, setBookingService] = useState(null);
+  const [bookingError, setBookingError] = useState("");
+  const [bookingSent, setBookingSent] = useState(false);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const pages = useMemo(() => chunk(services, 3), [services]);
   const [page, setPage] = useState(0);
   const pausedRef = useRef(false);
+
+  useEffect(() => {
+    let active = true;
+    apiRequest("/services").then((data) => {
+      if (!active || !Array.isArray(data) || data.length === 0) return;
+      const byName = new Map(data.map((item) => [item.name.trim().toLowerCase(), item]));
+      setServices(SERVICES.map((service) => {
+        const record = byName.get(service.name.toLowerCase());
+        return record ? { ...service, apiId: record.id, desc: record.description || service.desc, price: Number(record.base_price), duration: record.duration_mins ? `${record.duration_mins} min` : service.duration } : service;
+      }));
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  const submitBooking = async (event) => {
+    event.preventDefault();
+    const session = getSession();
+    if (!session.token) {
+      setBookingError("Please log in or create an account before booking.");
+      return;
+    }
+    if (!bookingService?.apiId) {
+      setBookingError("This service is not available for online booking yet. Please contact our team.");
+      return;
+    }
+    const form = new FormData(event.currentTarget);
+    setBookingLoading(true);
+    setBookingError("");
+    try {
+      await apiRequest("/bookings", { method: "POST", token: session.token, body: JSON.stringify({ service_id: bookingService.apiId, address_line: form.get("address_line"), pincode: form.get("pincode"), slot_start: new Date(form.get("slot_start")).toISOString() }) });
+      setBookingSent(true);
+    } catch (error) {
+      setBookingError(error.message);
+    } finally {
+      setBookingLoading(false);
+    }
+  };
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -471,7 +515,14 @@ export default function Services({ onBookService }) {
                     <ServiceCard
                       key={service.name}
                       service={service}
-                      onBook={onBookService}
+                      onBook={(item) => {
+                        if (onBookService) onBookService(item);
+                        else {
+                          setBookingService(item);
+                          setBookingSent(false);
+                          setBookingError("");
+                        }
+                      }}
                     />
                   ))}
                 </div>
@@ -568,6 +619,28 @@ export default function Services({ onBookService }) {
           </button>
         </div>
       </div>
+      {bookingService && (
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/60 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setBookingService(null); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="booking-title" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div><p className="text-xs font-bold uppercase tracking-wider text-orange-600">Book a service</p><h2 id="booking-title" className="mt-1 text-2xl font-extrabold text-slate-900">{bookingService.name}</h2><p className="mt-1 text-sm text-slate-500">From ₹{bookingService.price.toLocaleString("en-IN")}</p></div>
+              <button type="button" onClick={() => setBookingService(null)} aria-label="Close booking form" className="rounded-full px-3 py-1 text-xl text-slate-500 hover:bg-slate-100">×</button>
+            </div>
+            {bookingSent ? (
+              <div className="mt-7 rounded-2xl bg-emerald-50 p-5 text-sm font-medium text-emerald-800">Your booking request is now pending. Review it in <Link className="font-bold underline" to="/account" onClick={() => setBookingService(null)}>My account</Link>.</div>
+            ) : getSession().token ? (
+              <form onSubmit={submitBooking} className="mt-6 space-y-4">
+                <label className="block text-sm font-semibold text-slate-700">Service address<input name="address_line" required maxLength={255} placeholder="House, street, area" className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-normal outline-none focus:border-orange-500" /></label>
+                <div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-semibold text-slate-700">PIN code<input name="pincode" required pattern="[0-9]{6}" title="Enter a 6-digit PIN code" placeholder="756045" className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-normal outline-none focus:border-orange-500" /></label><label className="block text-sm font-semibold text-slate-700">Preferred date & time<input name="slot_start" type="datetime-local" required onFocus={(event) => { event.currentTarget.min = new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16); }} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm font-normal outline-none focus:border-orange-500" /></label></div>
+                {bookingError && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{bookingError}</p>}
+                <button disabled={bookingLoading} className="w-full rounded-xl bg-orange-600 px-4 py-3.5 text-sm font-bold text-white hover:bg-orange-700 disabled:opacity-60">{bookingLoading ? "Sending request..." : "Request booking"}</button>
+              </form>
+            ) : (
+              <div className="mt-6 rounded-2xl bg-slate-50 p-5"><p className="text-sm text-slate-600">Log in or create a Manyata account to request this booking.</p><div className="mt-4 flex gap-3"><Link to="/login" onClick={() => setBookingService(null)} className="rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-white">Log in</Link><Link to="/signup" onClick={() => setBookingService(null)} className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700">Sign up</Link></div></div>
+            )}
+          </section>
+        </div>
+      )}
     </section>
   );
 }
