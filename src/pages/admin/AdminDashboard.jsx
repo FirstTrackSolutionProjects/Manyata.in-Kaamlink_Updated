@@ -79,7 +79,7 @@ export default function AdminDashboard() {
 
   const logout = () => { clearSession(); navigate("/admin/login", { replace: true }); };
   const heading = sections.find(([key]) => key === section)?.[1] || "Overview";
-  const visible = (items, fields) => (items || []).filter((item) => !search || fields.some((key) => String(key.split(".").reduce((value, part) => value?.[part], item) ?? "").toLowerCase().includes(search.toLowerCase())));
+  const visible = (items, fields) => (Array.isArray(items) ? items : []).filter((item) => !search || fields.some((key) => String(key.split(".").reduce((value, part) => value?.[part], item) ?? "").toLowerCase().includes(search.toLowerCase())));
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 lg:flex">
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
         </header>
         {error && <div role="alert" className="mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><X size={17} />{error}</div>}
         {notice && <div role="status" className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"><Check size={17} />{notice}</div>}
-        {loading ? <div className="rounded-2xl bg-white p-12 text-center text-sm text-slate-500">Loading {heading.toLowerCase()}…</div> : error && !data ? (
+        {loading ? <div className="rounded-2xl bg-white p-12 text-center text-sm text-slate-500">Loading {heading.toLowerCase()}…</div> : error ? (
           <section role="alert" className="rounded-2xl border border-amber-200 bg-white p-8 text-center shadow-sm"><h2 className="text-lg font-extrabold">Could not load {heading.toLowerCase()}</h2><p className="mt-2 text-sm text-slate-600">{error}</p><button onClick={load} className="mt-5 rounded-xl bg-violet-700 px-4 py-2.5 text-sm font-bold text-white">Try again</button></section>
         ) : (
           <>
