@@ -43,6 +43,15 @@ export default function AdminDashboard() {
   const [pincodeDraft, setPincodeDraft] = useState({ pincode: "", city_id: "" });
   const token = session.token;
 
+  const handleRequestError = useCallback((requestError) => {
+    if (requestError.status === 401) {
+      clearSession();
+      navigate("/admin/login", { replace: true });
+      return;
+    }
+    setError(requestError.message);
+  }, [navigate]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -51,11 +60,11 @@ export default function AdminDashboard() {
       const result = await apiRequest(path, { token });
       setData(result);
     } catch (requestError) {
-      setError(requestError.message);
+      handleRequestError(requestError);
     } finally {
       setLoading(false);
     }
-  }, [section, token]);
+  }, [handleRequestError, section, token]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -65,7 +74,7 @@ export default function AdminDashboard() {
       await apiRequest(path, { token, method, body: JSON.stringify(body) });
       setNotice("Saved successfully.");
       await load();
-    } catch (requestError) { setError(requestError.message); }
+    } catch (requestError) { handleRequestError(requestError); }
   };
 
   const logout = () => { clearSession(); navigate("/admin/login", { replace: true }); };
@@ -79,7 +88,7 @@ export default function AdminDashboard() {
         <nav className="mt-5 flex gap-1 overflow-x-auto pb-1 lg:mt-8 lg:flex-1 lg:flex-col lg:overflow-visible">
           {sections.map(([key, label, Icon]) => <button key={key} onClick={() => { setSection(key); setSearch(""); }} className={`flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${section === key ? "bg-violet-600 text-white" : "text-slate-300 hover:bg-white/10 hover:text-white"}`}><Icon size={17} />{label}</button>)}
         </nav>
-        <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4 lg:mt-auto"><div className="min-w-0"><p className="truncate text-sm font-bold">{session.user?.full_name || "Owner"}</p><p className="text-xs text-slate-400">Administrator</p></div><button onClick={logout} title="Sign out" className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white"><LogOut size={18} /></button></div>
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-4 lg:mt-auto"><div className="min-w-0"><p className="truncate text-sm font-bold">{session.user?.full_name || "Owner"}</p><p className="text-xs text-slate-400">Administrator</p></div><button onClick={logout} title="Log out" className="inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-white/10 hover:text-white"><LogOut size={18} /><span>Log out</span></button></div>
       </aside>
 
       <main className="min-w-0 flex-1 p-4 sm:p-6 lg:ml-64 lg:p-9">

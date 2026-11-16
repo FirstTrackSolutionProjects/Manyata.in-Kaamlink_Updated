@@ -17,7 +17,9 @@ export async function apiRequest(path, { token, ...options } = {}) {
 
   const result = await response.json().catch(() => ({}));
   if (!response.ok || result.success === false) {
-    throw new Error(result.message || "We couldn't complete your request. Please try again.");
+    const error = new Error(result.message || "We couldn't complete your request. Please try again.");
+    error.status = response.status;
+    throw error;
   }
   return result.data;
 }
