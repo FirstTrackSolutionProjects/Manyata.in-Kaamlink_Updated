@@ -1,5 +1,5 @@
 
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 import Layout from "./components/Layout";
 import ScrollToTop from "./components/ScrollToTop";
@@ -32,6 +32,8 @@ export default function App() {
       <Routes>
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>} />
+        {/* Older admin account links pointed here; keep them from rendering a blank route. */}
+        <Route path="/account/admin" element={<Navigate to="/admin" replace />} />
         <Route element={<Layout />}>
           {/* Main Pages */}
           <Route index element={<Home />} />
