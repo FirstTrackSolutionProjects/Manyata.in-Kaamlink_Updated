@@ -13,6 +13,21 @@ export const login = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: result });
 });
 
+export const refresh = asyncHandler(async (req, res) => {
+  const result = await authService.refreshUserSession(req.body.refreshToken);
+  res.status(200).json({ success: true, data: result });
+});
+
+export const bootstrapSession = asyncHandler(async (req, res) => {
+  const result = await authService.bootstrapUserSession(req.user);
+  res.status(200).json({ success: true, data: result });
+});
+
+export const logout = asyncHandler(async (req, res) => {
+  await authService.logoutUser(req.body.refreshToken);
+  res.status(200).json({ success: true, data: { loggedOut: true } });
+});
+
 export const getMe = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,

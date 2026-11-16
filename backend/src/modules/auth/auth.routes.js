@@ -19,6 +19,9 @@ router.post(
 );
 
 router.post("/login", [body("email").isEmail().withMessage("Please provide a valid email"), body("password").notEmpty().withMessage("Password is required")], validate, authController.login);
+router.post("/refresh", [body("refreshToken").isString().notEmpty()], validate, authController.refresh);
+router.post("/refresh/bootstrap", requireAuth, authController.bootstrapSession);
+router.post("/logout", [body("refreshToken").optional().isString()], validate, authController.logout);
 router.get("/me", requireAuth, authController.getMe);
 
 export default router;

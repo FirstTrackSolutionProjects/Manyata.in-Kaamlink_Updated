@@ -20,6 +20,9 @@ const app = express();
 if (!process.env.JWT_ACCESS_SECRET || process.env.JWT_ACCESS_SECRET.length < 32 || process.env.JWT_ACCESS_SECRET.startsWith("YOUR_")) {
   throw new Error("Set JWT_ACCESS_SECRET to a private random value of at least 32 characters.");
 }
+if (!process.env.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_SECRET.length < 32 || process.env.JWT_REFRESH_SECRET === process.env.JWT_ACCESS_SECRET) {
+  throw new Error("Set JWT_REFRESH_SECRET to a separate private random value of at least 32 characters.");
+}
 
 const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
   .split(",")
