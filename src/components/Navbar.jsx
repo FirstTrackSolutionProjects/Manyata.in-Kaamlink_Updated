@@ -34,6 +34,7 @@ export default function Navbar() {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const accountPath = user?.role === "admin" ? "/admin" : "/account";
 
   useEffect(() => {
     setUser(getSession().user);
@@ -298,7 +299,7 @@ export default function Navbar() {
                 {user ? (
                   <>
                     <Link
-                      to="/account"
+                      to={accountPath}
                       onClick={handleNavClick}
                       tabIndex={accountOpen ? 0 : -1}
                       className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-600"
@@ -344,7 +345,7 @@ export default function Navbar() {
             </div>
 
             <Link
-              to={user ? "/account" : "/login"}
+              to={user ? accountPath : "/login"}
               onClick={handleNavClick}
               className="px-2 text-sm font-bold text-slate-700 transition hover:text-brand-600"
             >
@@ -470,7 +471,7 @@ export default function Navbar() {
               {user ? (
                 <>
                   <Link
-                    to="/account"
+                    to={accountPath}
                     tabIndex={open ? 0 : -1}
                     onClick={handleNavClick}
                     className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-700 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
