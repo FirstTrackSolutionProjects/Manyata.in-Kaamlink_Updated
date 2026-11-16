@@ -13,6 +13,7 @@ import serviceRoutes from "./modules/services/service.routes.js";
 import availabilityRoutes from "./modules/availability/availability.routes.js";
 import newsletterRoutes from "./modules/newsletter/newsletter.routes.js";
 import supportRoutes from "./modules/support/support.routes.js";
+import adminRoutes from "./modules/admin/admin.routes.js";
 
 
 const app = express();
@@ -62,6 +63,7 @@ app.use("/api/services", serviceRoutes);
 app.use("/api/availability", availabilityRoutes);
 app.use("/api/newsletter", newsletterRoutes);
 app.use("/api/support", supportRoutes);
+app.use("/api/admin", adminRoutes);
 
 
 

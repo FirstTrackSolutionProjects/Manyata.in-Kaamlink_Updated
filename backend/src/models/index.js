@@ -68,6 +68,8 @@ RefreshToken.belongsTo(User, { foreignKey: "user_id" });
 // User ↔ Booking
 User.hasMany(Booking, { foreignKey: "user_id", onDelete: "CASCADE" });
 Booking.belongsTo(User, { foreignKey: "user_id", as: "user" });
+Professional.hasMany(Booking, { foreignKey: "professional_id", as: "bookings" });
+Booking.belongsTo(Professional, { foreignKey: "professional_id", as: "professional" });
 
 // Service ↔ Booking
 Service.hasMany(Booking, { foreignKey: "service_id" });

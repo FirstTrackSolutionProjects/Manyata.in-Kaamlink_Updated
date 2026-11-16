@@ -20,7 +20,7 @@ export default function Login() {
         body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
       });
       saveSession(data);
-      navigate("/account");
+      navigate(data.user?.role === "admin" ? "/admin" : "/account");
     } catch (requestError) {
       setError(requestError.message);
     } finally {
