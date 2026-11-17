@@ -16,6 +16,9 @@ import supportRoutes from "./modules/support/support.routes.js";
 
 
 const app = express();
+// Hostinger sends requests through one reverse proxy and supplies X-Forwarded-* headers.
+// Trust only that proxy hop so rate limiting can use the real client IP.
+app.set("trust proxy", 1);
 if (!process.env.JWT_ACCESS_SECRET || process.env.JWT_ACCESS_SECRET.length < 32 || process.env.JWT_ACCESS_SECRET.startsWith("YOUR_")) {
   throw new Error("Set JWT_ACCESS_SECRET to a private random value of at least 32 characters.");
 }
