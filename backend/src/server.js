@@ -38,7 +38,7 @@ app.use(cors({
     return callback(new Error("This website is not allowed to access the Manyata API."));
   },
 }));
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

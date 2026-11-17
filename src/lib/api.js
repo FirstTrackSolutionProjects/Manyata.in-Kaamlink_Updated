@@ -45,7 +45,9 @@ async function refreshAccessToken() {
 
 export async function apiRequest(path, { token, ...options } = {}) {
   let response;
-  const isAuthEndpoint = path.startsWith("/auth/");
+  // /auth/me is a protected resource and must use the same refresh/retry flow
+  // as other protected endpoints when the short-lived access token expires.
+  const isAuthEndpoint = /^\/auth\/(?:login|signup|refresh(?:\/bootstrap)?|logout)$/.test(path);
   let currentToken = token || (!isAuthEndpoint ? getSession().token : null);
   if (currentToken && !isAuthEndpoint && !getSession().refreshToken) {
     currentToken = await refreshAccessToken();
