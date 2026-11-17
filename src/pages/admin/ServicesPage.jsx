@@ -268,9 +268,11 @@ function ServicesView({ data = {}, draft, setDraft, mutate }) {
   const [catQuery, setCatQuery] = useState("");
   const resultsRef = useRef(null);
 
-  useEffect(() => { setPage(1); }, [query, filters, pageSize]);
-
-  const setF = (patch) => setFilters((f) => ({ ...f, ...patch }));
+  const updateQuery = (value) => { setQuery(value); setPage(1); };
+  const updateFilters = (patch) => { setFilters((f) => ({ ...f, ...patch })); setPage(1); };
+  const resetFilters = () => { setFilters(DEFAULT_FILTERS); setPage(1); };
+  const updatePageSize = (value) => { setPageSize(value); setPage(1); };
+  const setF = updateFilters;
   const closeModal = () => { setModal(null); setEditing(null); setCatQuery(""); };
   const openEdit = (row) => {
     setEditing({ id: row.id, name: row.name, slug: row.slug, category_id: String(row.category_id), base_price: String(row.base_price), duration_mins: String(row.duration_mins) });
@@ -352,7 +354,7 @@ function ServicesView({ data = {}, draft, setDraft, mutate }) {
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-[220px] flex-1">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search services by name, slug or category" className={`${inputCls} pl-9`} />
+            <input value={query} onChange={(e) => updateQuery(e.target.value)} placeholder="Search services by name, slug or category" className={`${inputCls} pl-9`} />
           </div>
 
           <button
@@ -405,7 +407,7 @@ function ServicesView({ data = {}, draft, setDraft, mutate }) {
 
             <div className="flex items-center justify-between gap-3 sm:col-span-2 xl:col-span-5">
               <p className="text-xs text-slate-500"><b className="text-slate-900">{sorted.length}</b> of {services.length} services match</p>
-              <button onClick={() => setFilters(DEFAULT_FILTERS)} disabled={!pills.length} className={`${btn.ghost} disabled:cursor-not-allowed disabled:opacity-40`}>Reset filters</button>
+              <button onClick={resetFilters} disabled={!pills.length} className={`${btn.ghost} disabled:cursor-not-allowed disabled:opacity-40`}>Reset filters</button>
             </div>
           </div>
         )}
@@ -418,7 +420,7 @@ function ServicesView({ data = {}, draft, setDraft, mutate }) {
                 {p.label}<X size={12} />
               </button>
             ))}
-            <button onClick={() => setFilters(DEFAULT_FILTERS)} className="ml-1 text-xs font-bold text-slate-500 underline-offset-2 hover:text-violet-700 hover:underline">Clear all</button>
+            <button onClick={resetFilters} className="ml-1 text-xs font-bold text-slate-500 underline-offset-2 hover:text-violet-700 hover:underline">Clear all</button>
           </div>
         )}
       </div>
@@ -431,7 +433,7 @@ function ServicesView({ data = {}, draft, setDraft, mutate }) {
           <EmptyState icon={BriefcaseBusiness} title={services.length ? "No matching services" : "No services yet"} text={services.length ? "Try a different search or change the filters." : "Click “Add service” to create your first one."} />
           {services.length > 0 && (query || pills.length > 0) && (
             <div className="-mt-3 pb-6 text-center">
-              <button onClick={() => { setQuery(""); setFilters(DEFAULT_FILTERS); }} className={btn.ghost}>Clear search and filters</button>
+              <button onClick={() => { updateQuery(""); resetFilters(); }} className={btn.ghost}>Clear search and filters</button>
             </div>
           )}
         </div>
@@ -506,7 +508,7 @@ function ServicesView({ data = {}, draft, setDraft, mutate }) {
             Showing <b className="text-slate-900">{from}–{to}</b> of <b className="text-slate-900">{sorted.length}</b> services
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="w-40"><Select compact searchable={false} value={pageSize} onChange={setPageSize} options={PAGE_SIZES} /></div>
+            <div className="w-40"><Select compact searchable={false} value={pageSize} onChange={updatePageSize} options={PAGE_SIZES} /></div>
             {totalPages > 1 && (
               <nav className="flex items-center gap-1.5" aria-label="Pagination">
                 <button onClick={() => goTo(current - 1)} disabled={current === 1} className={`${pgBtn} ${pgIdle}`}><ChevronLeft size={16} /><span className="hidden sm:inline">Prev</span></button>
