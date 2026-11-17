@@ -33,7 +33,7 @@ export default function AdminDashboard() {
     navigate("/admin/login", { replace: true });
   };
 
-  const navClass = ({ isActive }) => `group relative flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold transition-all duration-200 ${isActive ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-900/40" : "text-slate-400 hover:bg-white/5 hover:text-white"}`;
+  const navClass = ({ isActive }) => `group relative flex shrink-0 items-center gap-3 rounded-xl px-3 py-1.5 text-left text-sm font-semibold transition-all duration-200 ${isActive ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-900/40" : "text-slate-400 hover:bg-white/5 hover:text-white"}`;
 
   const initial = (session.user?.full_name || "Owner").trim().charAt(0).toUpperCase();
 
@@ -54,9 +54,9 @@ export default function AdminDashboard() {
             </span>
           </Link>
 
-          <nav className="mt-5 flex gap-4 overflow-x-auto pb-1 lg:mt-4 lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-2 lg:overflow-y-auto lg:overflow-x-hidden lg:pb-3 lg:pr-1">
+          <nav className="admin-nav-scroll mt-5 flex gap-4 overflow-x-auto pb-1 lg:mt-4 lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-2 lg:overflow-y-auto lg:overflow-x-hidden lg:pb-3 lg:pr-1">
             <div className="flex gap-1 lg:flex-col">
-              <Link to="/" className="group flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-400 transition-all duration-200 hover:bg-white/5 hover:text-white">
+              <Link to="/" className="group flex shrink-0 items-center gap-3 rounded-xl px-3 py-1.5 text-left text-sm font-semibold text-slate-400 transition-all duration-200 hover:bg-white/5 hover:text-white">
                 <House size={18} className="transition group-hover:scale-110" />
                 <span className="flex-1">Home page</span>
                 <ArrowUpRight size={15} className="hidden opacity-0 transition group-hover:opacity-100 lg:block" />
