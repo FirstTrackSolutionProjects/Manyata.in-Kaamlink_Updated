@@ -113,6 +113,10 @@ h1,h2,h3,h4 { @apply font-display tracking-tight; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* Admin sidebar: hide the scrollbar but keep scrolling */
+.admin-nav-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.admin-nav-scroll::-webkit-scrollbar { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .reveal, .reveal.in-view { opacity:1; transform:none; transition:none; }
