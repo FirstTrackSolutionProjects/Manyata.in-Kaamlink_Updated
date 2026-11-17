@@ -12,7 +12,8 @@ import { Badge, EmptyState, StatStrip, inputCls } from "./AdminUI";
 import { btn } from "./AdminUI.styles";
 
 const blankProfile = { full_name: "", email: "", phone: "", address_line: "", city: "", pincode: "" };
-const DEFAULT_FILTERS = { joined: "any", photo: "all", sort: "newest" };
+const DEFAULT_FILTERS = { name: "", email: "", phone: "", city: "", joined: "any", photo: "all", sort: "newest" };
+const contains = (value, term) => !term.trim() || String(value || "").toLowerCase().includes(term.trim().toLowerCase());
 
 const PAGE_SIZES = [6, 9, 12, 24].map((n) => ({ value: n, label: `${n} per page` }));
 const JOINED_OPTIONS = [
@@ -426,11 +427,21 @@ function CustomersView({ all, mutate, reload }) {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(9);
+  const [now] = useState(() => Date.now());
   const resultsRef = useRef(null);
 
-  useEffect(() => { setPage(1); }, [tab, query, filters, pageSize]);
-
-  const setF = (patch) => setFilters((f) => ({ ...f, ...patch }));
+  const setF = (patch) => {
+    setFilters((f) => ({ ...f, ...patch }));
+    setPage(1);
+  };
+  const changeTab = (nextTab) => {
+    setTab(nextTab);
+    setPage(1);
+  };
+  const resetFilters = () => {
+    setFilters(DEFAULT_FILTERS);
+    setPage(1);
+  };
 
   const run = async (path, method, body) => {
     setActionError("");
@@ -457,7 +468,7 @@ function CustomersView({ all, mutate, reload }) {
   const suspended = all.filter((r) => !r.is_active && !r.deleted_at).length;
   const thisMonth = all.filter((r) => {
     const d = new Date(r.created_at);
-    const n = new Date();
+    const n = new Date(now);
     return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
   }).length;
   const tabs = [["all", "All", all.length - deleted], ["active", "Active", active], ["suspended", "Suspended", suspended], ["deleted", "Deleted", deleted]];
@@ -472,10 +483,13 @@ function CustomersView({ all, mutate, reload }) {
     if (filters.joined !== "any") {
       const d = new Date(r.created_at);
       if (filters.joined === "month") {
-        const n = new Date();
+        const n = new Date(now);
         if (d.getMonth() !== n.getMonth() || d.getFullYear() !== n.getFullYear()) return false;
-      } else if (Date.now() - d.getTime() > (filters.joined === "d30" ? 30 : 90) * 86400000) return false;
+      } else if (now - d.getTime() > (filters.joined === "d30" ? 30 : 90) * 86400000) return false;
     }
+        if (!contains(r.full_name, filters.name) || !contains(r.email, filters.email) || !contains(r.city, filters.city)) return false;
+    const phoneDigits = filters.phone.replace(/\D/g, "");
+    if (filters.phone.trim() && (!phoneDigits || !String(r.phone || "").replace(/\D/g, "").includes(phoneDigits))) return false;
     return !q || `${r.full_name || ""} ${r.email || ""} ${r.phone || ""} ${r.city || ""}`.toLowerCase().includes(q);
   });
   const sorted = [...matched].sort(SORTERS[filters.sort]);
@@ -496,6 +510,10 @@ function CustomersView({ all, mutate, reload }) {
   const pills = [];
   if (filters.joined !== "any") pills.push({ key: "joined", label: `Joined: ${JOINED_OPTIONS.find((o) => o.value === filters.joined)?.label}`, clear: { joined: "any" } });
   if (filters.photo !== "all") pills.push({ key: "photo", label: filters.photo === "with" ? "With photo" : "Without photo", clear: { photo: "all" } });
+    if (filters.name.trim()) pills.push({ key: "name", label: `Name: ${filters.name.trim()}`, clear: { name: "" } });
+  if (filters.email.trim()) pills.push({ key: "email", label: `Email: ${filters.email.trim()}`, clear: { email: "" } });
+  if (filters.phone.trim()) pills.push({ key: "phone", label: `Mobile: ${filters.phone.trim()}`, clear: { phone: "" } });
+  if (filters.city.trim()) pills.push({ key: "city", label: `City: ${filters.city.trim()}`, clear: { city: "" } });
   if (filters.sort !== "newest") pills.push({ key: "sort", label: `Sort: ${SORT_OPTIONS.find((o) => o.value === filters.sort)?.label}`, clear: { sort: "newest" } });
 
   const actions = (row) => (
@@ -526,7 +544,7 @@ function CustomersView({ all, mutate, reload }) {
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-[220px] flex-1">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name, email, phone or city" className={`${inputCls} pl-9`} />
+            <input value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} placeholder="Search by name, email, phone or city" className={`${inputCls} pl-9`} />
           </div>
 
           <button
@@ -547,7 +565,7 @@ function CustomersView({ all, mutate, reload }) {
 
         <div className="admin-nav-scroll -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
           {tabs.map(([key, label, n]) => (
-            <button key={key} onClick={() => setTab(key)} className={`inline-flex shrink-0 items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${tab === key ? "bg-slate-900 text-white shadow-md" : "bg-slate-100 text-slate-600 hover:bg-violet-50 hover:text-violet-700"}`}>
+            <button key={key} onClick={() => changeTab(key)} className={`inline-flex shrink-0 items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${tab === key ? "bg-slate-900 text-white shadow-md" : "bg-slate-100 text-slate-600 hover:bg-violet-50 hover:text-violet-700"}`}>
               {label}
               <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${tab === key ? "bg-white/20" : "bg-white"}`}>{n}</span>
             </button>
@@ -555,7 +573,32 @@ function CustomersView({ all, mutate, reload }) {
         </div>
 
         {filtersOpen && (
-          <div className="mt-3 grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <div className="mt-3 grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2 xl:grid-cols-3">
+            {[
+              ["name", "Name", User, "Search by name"],
+              ["email", "Email", Mail, "Search by email"],
+              ["phone", "Mobile number", Phone, "Search by mobile number"],
+              ["city", "City", MapPin, "Search by city"],
+            ].map(([key, label, Icon, placeholder]) => (
+              <Labeled key={key} label={label}>
+                <span className="relative block">
+                  <Icon size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={filters[key]}
+                    onChange={(e) => setF({ [key]: e.target.value })}
+                    placeholder={placeholder}
+                    inputMode={key === "phone" ? "tel" : undefined}
+                    className={`${inputCls} pl-10 ${filters[key] ? "pr-10" : ""}`}
+                  />
+                  {filters[key] && (
+                    <button type="button" onClick={() => setF({ [key]: "" })} aria-label={`Clear ${label}`} className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                      <X size={14} />
+                    </button>
+                  )}
+                </span>
+              </Labeled>
+            ))}
+
             <Labeled label="Joined">
               <Select value={filters.joined} onChange={(v) => setF({ joined: v })} options={JOINED_OPTIONS} />
             </Labeled>
@@ -574,7 +617,7 @@ function CustomersView({ all, mutate, reload }) {
 
             <div className="flex items-center justify-between gap-3 sm:col-span-2 xl:col-span-3">
               <p className="text-xs text-slate-500"><b className="text-slate-900">{sorted.length}</b> customers match</p>
-              <button onClick={() => setFilters(DEFAULT_FILTERS)} disabled={!pills.length} className={`${btn.ghost} disabled:cursor-not-allowed disabled:opacity-40`}>Reset filters</button>
+              <button onClick={resetFilters} disabled={!pills.length} className={`${btn.ghost} disabled:cursor-not-allowed disabled:opacity-40`}>Reset filters</button>
             </div>
           </div>
         )}
@@ -587,7 +630,7 @@ function CustomersView({ all, mutate, reload }) {
                 {p.label}<X size={12} />
               </button>
             ))}
-            <button onClick={() => setFilters(DEFAULT_FILTERS)} className="ml-1 text-xs font-bold text-slate-500 underline-offset-2 hover:text-violet-700 hover:underline">Clear all</button>
+            <button onClick={resetFilters} className="ml-1 text-xs font-bold text-slate-500 underline-offset-2 hover:text-violet-700 hover:underline">Clear all</button>
           </div>
         )}
       </div>
@@ -602,7 +645,7 @@ function CustomersView({ all, mutate, reload }) {
           <EmptyState icon={Users} title={tab === "deleted" ? "No deleted customers" : all.length ? "No matching customers" : "No customers yet"} text={all.length ? "Try a different search, tab or filters." : "Customers will appear here once they sign up."} />
           {all.length > 0 && (query || pills.length > 0) && (
             <div className="-mt-3 pb-6 text-center">
-              <button onClick={() => { setQuery(""); setFilters(DEFAULT_FILTERS); }} className={btn.ghost}>Clear search and filters</button>
+              <button onClick={() => { setQuery(""); resetFilters(); }} className={btn.ghost}>Clear search and filters</button>
             </div>
           )}
         </div>
@@ -671,7 +714,7 @@ function CustomersView({ all, mutate, reload }) {
             Showing <b className="text-slate-900">{from}–{to}</b> of <b className="text-slate-900">{sorted.length}</b> customers
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="w-40"><Select compact value={pageSize} onChange={setPageSize} options={PAGE_SIZES} /></div>
+            <div className="w-40"><Select compact value={pageSize} onChange={(size) => { setPageSize(size); setPage(1); }} options={PAGE_SIZES} /></div>
             <nav className="flex items-center gap-1.5" aria-label="Pagination">
               <button onClick={() => goTo(current - 1)} disabled={current === 1} className={`${pgBtn} ${pgIdle} px-3`}><ChevronLeft size={16} />Prev</button>
               <span className="px-2 text-sm font-semibold text-slate-500 sm:hidden">{current} / {totalPages}</span>
