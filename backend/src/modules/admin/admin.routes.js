@@ -114,6 +114,12 @@ router.get("/customers", [query("search").optional().trim().isLength({ max: 120 
   res.json({ success: true, data: customers.map((customer) => ({ ...customer.toJSON(), has_photo: photoIds.has(String(customer.id)) })) });
 }));
 
+router.get("/customers/:id/photo", [param("id").isInt({ min: 1 })], validate, asyncHandler(async (req, res) => {
+  const photo = await CustomerProfilePhoto.findByPk(req.params.id);
+  if (!photo) throw new ApiError(404, "This customer has no profile photo.");
+  res.json({ success: true, data: { profile_photo: profilePhotoDataUrl(photo) } });
+}));
+
 router.get("/customers/:id", [param("id").isInt({ min: 1 })], validate, asyncHandler(async (req, res) => {
   const customer = await User.findOne({ where: { id: req.params.id, role: "customer" } });
   if (!customer) throw new ApiError(404, "Customer not found");

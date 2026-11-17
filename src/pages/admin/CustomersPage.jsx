@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Mail, Phone, UserCheck, UserPlus, UserX, Users, Eye, Pencil, RotateCcw, Trash2, X } from "lucide-react";
 import { apiRequest } from "../../lib/api";
 import { SearchBox } from "./AdminShared";
@@ -10,6 +10,26 @@ import { btn } from "./AdminUI.styles";
 
 const fmt = (d) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 const blankProfile = { full_name: "", email: "", phone: "", address_line: "", city: "", pincode: "" };
+
+function CustomerAvatar({ customer }) {
+  const host = useRef(null);
+  const [photo, setPhoto] = useState(null);
+  useEffect(() => {
+    if (!customer.has_photo || !host.current) return undefined;
+    let active = true;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      observer.disconnect();
+      apiRequest(`/admin/customers/${customer.id}/photo`)
+        .then((result) => { if (active) setPhoto(result.profile_photo); })
+        .catch(() => {});
+    }, { rootMargin: "120px" });
+    observer.observe(host.current);
+    return () => { active = false; observer.disconnect(); };
+  }, [customer.id, customer.has_photo]);
+
+  return <span ref={host} className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-extrabold text-white">{photo ? <img src={photo} alt={`${customer.full_name} profile`} className="h-full w-full object-cover" /> : (customer.full_name || "?").charAt(0).toUpperCase()}</span>;
+}
 
 function CustomerProfileModal({ customer, onClose, onSaved }) {
   const [form, setForm] = useState({ ...blankProfile, ...customer });
@@ -68,7 +88,7 @@ function CustomersView({ all, rows, mutate, reload, search, setSearch }) {
       <div className="overflow-x-auto"><table className="w-full min-w-[960px] text-left text-sm">
         <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Customer</th><th className="px-3 py-3">Contact</th><th className="px-3 py-3">Joined</th><th className="px-3 py-3">Access</th><th className="px-5 py-3 text-right">Actions</th></tr></thead>
         <tbody className="divide-y divide-slate-100">{visibleRows.map((row) => <tr key={row.id} className="transition hover:bg-violet-50/40">
-          <td className="px-5 py-3.5"><div className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-extrabold text-white">{(row.full_name || "?").charAt(0).toUpperCase()}</span><p className="truncate font-bold text-slate-900">{row.full_name}{row.has_photo && <span className="ml-2 text-xs font-normal text-violet-600">Photo</span>}</p></div></td>
+          <td className="px-5 py-3.5"><div className="flex items-center gap-3"><CustomerAvatar customer={row} /><p className="truncate font-bold text-slate-900">{row.full_name}</p></div></td>
           <td className="px-3 py-3.5"><p className="flex items-center gap-1.5 text-slate-700"><Mail size={13} className="text-slate-400" />{row.email}</p><p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500"><Phone size={13} className="text-slate-400" />{row.phone || "—"}</p></td>
           <td className="px-3 py-3.5 text-slate-600">{fmt(row.created_at)}</td>
           <td className="px-3 py-3.5"><Badge tone={row.deleted_at ? "rose" : row.is_active ? "emerald" : "amber"}><span className={`h-1.5 w-1.5 rounded-full ${row.deleted_at ? "bg-rose-500" : row.is_active ? "bg-emerald-500" : "bg-amber-500"}`} />{row.deleted_at ? "Deleted" : row.is_active ? "Active" : "Suspended"}</Badge></td>
