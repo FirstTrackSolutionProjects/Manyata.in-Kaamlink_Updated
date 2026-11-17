@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, ShieldCheck, Star, ArrowRight } from "lucide-react";
 import { apiRequest, saveSession } from "../lib/api";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -19,6 +20,20 @@ export default function Login() {
         method: "POST",
         body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
       });
+      saveSession(data);
+      navigate(data.user?.role === "admin" ? "/admin" : "/account");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleCredential = async (credential) => {
+    setError("");
+    setLoading(true);
+    try {
+      const data = await apiRequest("/auth/google", { method: "POST", body: JSON.stringify({ credential }) });
       saveSession(data);
       navigate(data.user?.role === "admin" ? "/admin" : "/account");
     } catch (requestError) {
@@ -150,6 +165,9 @@ export default function Login() {
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </form>
+
+            <div className="my-6 flex items-center gap-3 text-xs font-semibold text-slate-400"><span className="h-px flex-1 bg-slate-200" />OR CONTINUE WITH<span className="h-px flex-1 bg-slate-200" /></div>
+            <GoogleSignInButton onCredential={handleGoogleCredential} disabled={loading} />
 
             <p className="mt-8 text-center text-sm text-slate-500">
               Don't have an account?{" "}
