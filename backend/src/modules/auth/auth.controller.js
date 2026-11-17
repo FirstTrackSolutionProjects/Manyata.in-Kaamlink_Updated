@@ -15,6 +15,11 @@ export const login = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: result });
 });
 
+export const googleLogin = asyncHandler(async (req, res) => {
+  const result = await authService.loginWithGoogle({ credential: req.body.credential });
+  res.status(200).json({ success: true, data: result });
+});
+
 export const refresh = asyncHandler(async (req, res) => {
   const result = await authService.refreshUserSession(req.body.refreshToken);
   res.status(200).json({ success: true, data: result });
