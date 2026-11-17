@@ -13,6 +13,7 @@ import ContactMessageModel from "./contactMessage.js";
 import BookingModel from "./booking.js";
 import NewsletterSubscriptionModel from "./newsletterSubscription.js";
 import SupportTicketModel from "./supportTicket.js";
+import CustomerProfilePhotoModel from "./customerProfilePhoto.js";
 
 
 const User = UserModel(sequelize, DataTypes);
@@ -29,6 +30,9 @@ const ContactMessage = ContactMessageModel(sequelize, DataTypes);
 const Booking = BookingModel(sequelize, DataTypes);
 const NewsletterSubscription = NewsletterSubscriptionModel(sequelize, DataTypes);
 const SupportTicket = SupportTicketModel(sequelize, DataTypes);
+const CustomerProfilePhoto = CustomerProfilePhotoModel(sequelize, DataTypes);
+User.hasOne(CustomerProfilePhoto, { foreignKey: "user_id", onDelete: "CASCADE", as: "profilePhoto" });
+CustomerProfilePhoto.belongsTo(User, { foreignKey: "user_id" });
 /* ---------------- Associations ---------------- */
 
 // City ↔ Pincode
@@ -90,4 +94,5 @@ export {
   Booking, // FIXED: Added this to exports
   NewsletterSubscription,
   SupportTicket,
+  CustomerProfilePhoto,
 };

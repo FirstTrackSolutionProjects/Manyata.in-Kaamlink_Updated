@@ -6,10 +6,12 @@ import {
   Booking,
   City,
   ContactMessage,
+  CustomerProfilePhoto,
   NewsletterSubscription,
   Pincode,
   Professional,
   ProfessionalService,
+  RefreshToken,
   Service,
   ServiceCategory,
   SupportTicket,
@@ -20,6 +22,7 @@ import { requireRole } from "../../middleware/authorize.js";
 import { validate } from "../../middleware/validate.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiError } from "../../utils/ApiError.js";
+import { profilePhotoDataUrl } from "../../utils/profilePhoto.js";
 
 const router = Router();
 const bookingStatuses = ["pending", "confirmed", "assigned", "in_progress", "completed", "cancelled", "refunded"];
@@ -105,15 +108,60 @@ router.get("/customers", [query("search").optional().trim().isLength({ max: 120 
     { email: { [Op.like]: `%${search}%` } },
     { phone: { [Op.like]: `%${search}%` } },
   ];
-  const customers = await User.findAll({ where, attributes: ["id", "full_name", "email", "phone", "is_active", "created_at"], limit: 250, order: [["created_at", "DESC"]] });
-  res.json({ success: true, data: customers });
+  const customers = await User.findAll({ where, attributes: ["id", "full_name", "email", "phone", "is_active", "address_line", "city", "pincode", "deleted_at", "created_at"], limit: 250, order: [["created_at", "DESC"]] });
+  const photos = await CustomerProfilePhoto.findAll({ where: { user_id: customers.map(({ id }) => id) }, attributes: ["user_id"] });
+  const photoIds = new Set(photos.map(({ user_id }) => String(user_id)));
+  res.json({ success: true, data: customers.map((customer) => ({ ...customer.toJSON(), has_photo: photoIds.has(String(customer.id)) })) });
 }));
 
-router.patch("/customers/:id", [param("id").isInt({ min: 1 }), body("is_active").isBoolean()], validate, asyncHandler(async (req, res) => {
+router.get("/customers/:id", [param("id").isInt({ min: 1 })], validate, asyncHandler(async (req, res) => {
   const customer = await User.findOne({ where: { id: req.params.id, role: "customer" } });
   if (!customer) throw new ApiError(404, "Customer not found");
-  await customer.update({ is_active: req.body.is_active });
-  res.json({ success: true, data: { id: customer.id, is_active: customer.is_active } });
+  const [photo, bookings] = await Promise.all([
+    CustomerProfilePhoto.findByPk(customer.id),
+    Booking.findAll({ where: { user_id: customer.id }, order: [["created_at", "DESC"]], limit: 100, include: [{ model: Service, as: "service", attributes: ["id", "name"] }] }),
+  ]);
+  const { id, full_name, email, phone, address_line, city, pincode, is_active, deleted_at, created_at, updated_at } = customer;
+  res.json({ success: true, data: { id, full_name, email, phone, address_line, city, pincode, is_active, deleted_at, created_at, updated_at, profile_photo: profilePhotoDataUrl(photo), bookings } });
+}));
+
+router.patch("/customers/:id", [
+  param("id").isInt({ min: 1 }),
+  body("full_name").optional().trim().notEmpty().isLength({ max: 120 }),
+  body("email").optional().trim().isEmail().normalizeEmail(),
+  body("phone").optional({ values: "falsy" }).trim().isLength({ min: 7, max: 15 }),
+  body("address_line").optional({ values: "falsy" }).trim().isLength({ max: 255 }),
+  body("city").optional({ values: "falsy" }).trim().isLength({ max: 100 }),
+  body("pincode").optional({ values: "falsy" }).trim().matches(/^[0-9]{6}$/),
+  body("is_active").optional().isBoolean(),
+], validate, asyncHandler(async (req, res) => {
+  const customer = await User.findOne({ where: { id: req.params.id, role: "customer" } });
+  if (!customer) throw new ApiError(404, "Customer not found");
+  if (customer.deleted_at) throw new ApiError(409, "Restore this customer before editing the profile.");
+  const keys = ["full_name", "email", "phone", "address_line", "city", "pincode", "is_active"];
+  const updates = Object.fromEntries(keys.filter((key) => Object.hasOwn(req.body, key)).map((key) => [key, req.body[key] === "" ? null : req.body[key]]));
+  for (const key of ["email", "phone"]) {
+    if (!updates[key] || updates[key] === customer[key]) continue;
+    if (await User.findOne({ where: { [key]: updates[key], id: { [Op.ne]: customer.id } } })) throw new ApiError(409, `That ${key} is already used by another account.`);
+  }
+  if (updates.is_active === false) await RefreshToken.update({ revoked: true }, { where: { user_id: customer.id, revoked: false } });
+  await customer.update(updates);
+  res.json({ success: true, data: { id: customer.id, full_name: customer.full_name, email: customer.email, phone: customer.phone, address_line: customer.address_line, city: customer.city, pincode: customer.pincode, is_active: customer.is_active } });
+}));
+
+router.delete("/customers/:id", [param("id").isInt({ min: 1 })], validate, asyncHandler(async (req, res) => {
+  const customer = await User.findOne({ where: { id: req.params.id, role: "customer" } });
+  if (!customer) throw new ApiError(404, "Customer not found");
+  if (!customer.deleted_at) await customer.update({ is_active: false, deleted_at: new Date() });
+  await RefreshToken.update({ revoked: true }, { where: { user_id: customer.id, revoked: false } });
+  res.json({ success: true, data: { id: customer.id, deleted_at: customer.deleted_at } });
+}));
+
+router.post("/customers/:id/restore", [param("id").isInt({ min: 1 })], validate, asyncHandler(async (req, res) => {
+  const customer = await User.findOne({ where: { id: req.params.id, role: "customer" } });
+  if (!customer) throw new ApiError(404, "Customer not found");
+  await customer.update({ is_active: true, deleted_at: null });
+  res.json({ success: true, data: { id: customer.id, is_active: customer.is_active, deleted_at: null } });
 }));
 
 router.get("/professionals", asyncHandler(async (_req, res) => {

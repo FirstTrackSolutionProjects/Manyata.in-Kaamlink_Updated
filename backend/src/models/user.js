@@ -48,6 +48,10 @@ export default (sequelize) => {
         allowNull: false,
         defaultValue: true,
       },
+      address_line: { type: DataTypes.STRING(255), allowNull: true },
+      city: { type: DataTypes.STRING(100), allowNull: true },
+      pincode: { type: DataTypes.STRING(10), allowNull: true },
+      deleted_at: { type: DataTypes.DATE, allowNull: true },
     },
     {
       tableName: "users",

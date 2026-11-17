@@ -25,7 +25,7 @@ export async function signupUser({ full_name, email, phone, password }) {
 }
 
 export async function loginUser({ email, password }) {
-  const user = await User.findOne({ where: { email: email.trim().toLowerCase(), is_active: true } });
+  const user = await User.findOne({ where: { email: email.trim().toLowerCase(), is_active: true, deleted_at: null } });
   
   if (!user) {
     throw new ApiError(401, "Invalid email or password");
@@ -78,7 +78,7 @@ export async function refreshUserSession(token) {
   if (!revokedCount) throw new ApiError(401, "Your session expired. Please sign in again.");
 
   const user = await User.findByPk(decoded.id);
-  if (!user || !user.is_active) throw new ApiError(401, "This account is unavailable. Please contact support.");
+  if (!user || !user.is_active || user.deleted_at) throw new ApiError(401, "This account is unavailable. Please contact support.");
   return generateAuthResponse(user);
 }
 

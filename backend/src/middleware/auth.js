@@ -25,7 +25,7 @@ export const requireAuth = asyncHandler(async (req, res, next) => {
   }
 
   const currentUser = await User.findByPk(decoded.id);
-  if (!currentUser || !currentUser.is_active) {
+  if (!currentUser || !currentUser.is_active || currentUser.deleted_at) {
     throw new ApiError(401, "The user belonging to this token no longer exists.");
   }
 
