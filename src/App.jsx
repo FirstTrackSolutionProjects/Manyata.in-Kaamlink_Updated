@@ -20,6 +20,15 @@ import AuthorisedDealers from "./pages/AuthorisedDealers";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminGate from "./pages/admin/AdminGate";
+import OverviewPage from "./pages/admin/OverviewPage";
+import BookingsPage from "./pages/admin/BookingsPage";
+import ServicesPage from "./pages/admin/ServicesPage";
+import ProfessionalsPage from "./pages/admin/ProfessionalsPage";
+import CustomersPage from "./pages/admin/CustomersPage";
+import ContactInboxPage from "./pages/admin/ContactInboxPage";
+import SupportTicketsPage from "./pages/admin/SupportTicketsPage";
+import ServiceAreasPage from "./pages/admin/ServiceAreasPage";
+import NewsletterPage from "./pages/admin/NewsletterPage";
 
 import FAQ from "./components/FAQ";
 
@@ -31,7 +40,19 @@ export default function App() {
 
       <Routes>
         <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>} />
+        <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>}>
+          <Route index element={<Navigate to="/admin/overview" replace />} />
+          <Route path="overview" element={<OverviewPage />} />
+          <Route path="bookings" element={<BookingsPage />} />
+          <Route path="services" element={<ServicesPage />} />
+          <Route path="professionals" element={<ProfessionalsPage />} />
+          <Route path="customers" element={<CustomersPage />} />
+          <Route path="contact" element={<ContactInboxPage />} />
+          <Route path="tickets" element={<SupportTicketsPage />} />
+          <Route path="service-areas" element={<ServiceAreasPage />} />
+          <Route path="newsletter" element={<NewsletterPage />} />
+          <Route path="*" element={<Navigate to="/admin/overview" replace />} />
+        </Route>
         {/* Older admin account links pointed here; keep them from rendering a blank route. */}
         <Route path="/account/admin" element={<Navigate to="/admin" replace />} />
         <Route element={<Layout />}>
