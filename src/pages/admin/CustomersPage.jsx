@@ -293,21 +293,21 @@ function CustomerProfileModal({ customer, onClose, onSaved }) {
 
   return (
     <Overlay onClose={onClose} maxW="sm:max-w-2xl">
-      <div className="relative h-28 overflow-hidden bg-gradient-to-br from-violet-600 via-indigo-600 to-slate-900">
+      <div className="relative h-28 overflow-hidden rounded-t-3xl bg-gradient-to-br from-violet-600 via-indigo-600 to-slate-900">
         <div className="pointer-events-none absolute -right-10 -top-16 h-52 w-52 rounded-full bg-white/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 left-1/3 h-44 w-44 rounded-full bg-fuchsia-500/25 blur-3xl" />
         <p className="absolute left-6 top-5 text-[11px] font-bold uppercase tracking-[0.2em] text-violet-100 sm:left-8">Customer record · #{customer.id}</p>
         <button onClick={onClose} aria-label="Close" className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-white backdrop-blur transition hover:bg-white/25"><X size={18} /></button>
       </div>
 
-      <div className="px-6 pb-6 sm:px-8 sm:pb-8">
-        <div className="-mt-12 flex flex-wrap items-end gap-4">
+      <div className="relative z-10 px-6 pb-6 sm:px-8 sm:pb-8">
+        <div className="flex flex-wrap items-start gap-4">
           {form.profile_photo ? (
-            <img src={form.profile_photo} alt="Customer profile" className="h-24 w-24 rounded-full object-cover shadow-lg ring-4 ring-white" />
+            <img src={form.profile_photo} alt="Customer profile" className="-mt-12 h-24 w-24 shrink-0 rounded-full object-cover shadow-lg ring-4 ring-white" />
           ) : (
-            <div className="grid h-24 w-24 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-3xl font-extrabold text-white shadow-lg ring-4 ring-white">{form.full_name?.[0]?.toUpperCase() || "?"}</div>
+            <div className="-mt-12 grid h-24 w-24 shrink-0 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-3xl font-extrabold text-white shadow-lg ring-4 ring-white">{form.full_name?.[0]?.toUpperCase() || "?"}</div>
           )}
-          <div className="min-w-0 pb-1">
+          <div className="min-w-0 pt-3">
             <h2 className="truncate text-2xl font-extrabold text-slate-900">{form.full_name || "Customer"}</h2>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
               <StateBadge row={form} />
@@ -672,9 +672,10 @@ function CustomersView({ all, mutate, reload }) {
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <div className="w-40"><Select compact value={pageSize} onChange={setPageSize} options={PAGE_SIZES} /></div>
-            {totalPages > 1 && (
-              <nav className="flex items-center gap-1.5" aria-label="Pagination">
-                <button onClick={() => goTo(current - 1)} disabled={current === 1} className={`${pgBtn} ${pgIdle}`}><ChevronLeft size={16} /><span className="hidden sm:inline">Prev</span></button>
+            <nav className="flex items-center gap-1.5" aria-label="Pagination">
+              <button onClick={() => goTo(current - 1)} disabled={current === 1} className={`${pgBtn} ${pgIdle} px-3`}><ChevronLeft size={16} />Prev</button>
+              <span className="px-2 text-sm font-semibold text-slate-500 sm:hidden">{current} / {totalPages}</span>
+              <div className="hidden items-center gap-1.5 sm:flex">
                 {pageList(current, totalPages).map((n, i) =>
                   n === "…" ? (
                     <span key={`gap-${i}`} className="px-1 text-slate-400">…</span>
@@ -682,9 +683,15 @@ function CustomersView({ all, mutate, reload }) {
                     <button key={n} onClick={() => goTo(n)} aria-current={n === current ? "page" : undefined} className={`${pgBtn} ${n === current ? pgOn : pgIdle}`}>{n}</button>
                   )
                 )}
-                <button onClick={() => goTo(current + 1)} disabled={current === totalPages} className={`${pgBtn} ${pgIdle}`}><span className="hidden sm:inline">Next</span><ChevronRight size={16} /></button>
-              </nav>
-            )}
+              </div>
+              <button
+                onClick={() => goTo(current + 1)}
+                disabled={current === totalPages}
+                className={`${pgBtn} px-3 ${current === totalPages ? "border-slate-200 bg-slate-100 text-slate-400 disabled:cursor-not-allowed" : "border-transparent bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-600/25 hover:-translate-y-0.5"}`}
+              >
+                Next<ChevronRight size={16} />
+              </button>
+            </nav>
           </div>
         </div>
       )}
