@@ -1,5 +1,10 @@
 const API_BASE_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
+const SESSION_CHANGE_EVENT = "manyata:session-change";
 let refreshInFlight = null;
+
+function notifySessionChange() {
+  window.dispatchEvent(new Event(SESSION_CHANGE_EVENT));
+}
 
 async function request(path, options, token) {
   return fetch(`${API_BASE_URL}${path}`, {
@@ -86,6 +91,7 @@ export function saveSession(data) {
   localStorage.setItem("manyata.accessToken", data.accessToken);
   if (data.refreshToken) localStorage.setItem("manyata.refreshToken", data.refreshToken);
   localStorage.setItem("manyata.user", JSON.stringify(data.user));
+  notifySessionChange();
 }
 
 export function getSession() {
@@ -104,6 +110,7 @@ export function clearSession() {
   localStorage.removeItem("manyata.accessToken");
   localStorage.removeItem("manyata.refreshToken");
   localStorage.removeItem("manyata.user");
+  notifySessionChange();
 }
 
 export function logoutSession() {

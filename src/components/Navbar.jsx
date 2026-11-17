@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import manyataLogo from "../assets/LogoDesign.png";
@@ -37,8 +36,14 @@ export default function Navbar() {
   const accountPath = user?.role === "admin" ? "/admin" : "/account";
 
   useEffect(() => {
-    setUser(getSession().user);
-  }, [location.pathname]);
+    const syncSession = () => setUser(getSession().user);
+    window.addEventListener("manyata:session-change", syncSession);
+    window.addEventListener("storage", syncSession);
+    return () => {
+      window.removeEventListener("manyata:session-change", syncSession);
+      window.removeEventListener("storage", syncSession);
+    };
+  }, []);
 
   const handleLogout = async () => {
     await logoutSession();
@@ -48,7 +53,7 @@ export default function Navbar() {
     navigate("/");
   };
 
-  // Navbar shadow on scroll
+  // Navbar background on scroll
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -175,20 +180,25 @@ export default function Navbar() {
     "rounded-full px-4 py-2.5 text-sm font-semibold text-slate-600 transition-all duration-200 hover:bg-brand-50 hover:text-brand-600";
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-5 sm:pt-4 lg:px-8">
+    <header
+      className={`fixed inset-x-0 top-0 z-50 px-3 transition-all duration-300 sm:px-5 lg:px-8 ${
+        scrolled
+          ? "border-b border-slate-200/70 bg-white/90 pb-2 pt-2 shadow-[0_6px_24px_rgba(15,23,42,0.06)] backdrop-blur-2xl"
+          : "pb-0 pt-3 sm:pt-4"
+      }`}
+    >
       <div className="relative mx-auto max-w-7xl">
 
         {/* MAIN NAVBAR */}
         <nav
           className={`relative z-20 flex h-[62px] items-center justify-between gap-3 rounded-2xl border px-3 transition-all duration-300 sm:h-[68px] sm:rounded-full sm:px-5 lg:px-6 ${
             scrolled
-              ? "border-slate-200/80 bg-white/95 shadow-[0_8px_35px_rgba(15,23,42,0.09)] backdrop-blur-2xl"
+              ? "border-transparent bg-transparent shadow-none"
               : "border-white/80 bg-white/80 shadow-sm backdrop-blur-xl"
           }`}
           aria-label="Main navigation"
         >
 
-          {/* LOGO */}
           {/* LOGO */}
           <Link
             to="/"
@@ -204,26 +214,7 @@ export default function Navbar() {
             <span className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
               Many<span className="text-brand-600">ata</span>
             </span>
-
           </Link>
-
-
-
-
-          {/* <Link
-            to="/"
-            onClick={handleNavClick}
-            className="group flex min-w-0 shrink-0 items-center gap-2.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand-500 sm:gap-3"
-            aria-label="Manyata Home"
-          >
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-gradient-to-br from-brand-500 to-gold-500 text-lg font-black text-white shadow-md transition-transform duration-300 group-hover:scale-105 sm:h-11 sm:w-11">
-              M
-            </span>
-
-            <span className="truncate text-[19px] font-extrabold tracking-tight text-slate-900 sm:text-[22px]">
-              Many<span className="text-brand-600">ata</span>
-            </span>
-          </Link> */}
 
           {/* DESKTOP NAVIGATION */}
           <ul className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-0.5 xl:flex">
@@ -533,8 +524,3 @@ export default function Navbar() {
     </header>
   );
 }
-
-
-
-
-
