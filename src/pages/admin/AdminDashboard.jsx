@@ -54,7 +54,7 @@ export default function AdminDashboard() {
             </span>
           </Link>
 
-          <nav className="mt-5 flex gap-4 overflow-x-auto pb-1 lg:mt-6 lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-3 lg:overflow-y-auto lg:overflow-x-hidden lg:pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <nav className="mt-5 flex gap-4 overflow-x-auto pb-1 lg:mt-4 lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-2 lg:overflow-y-auto lg:overflow-x-hidden lg:pb-3 lg:pr-1">
             <div className="flex gap-1 lg:flex-col">
               <Link to="/" className="group flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-400 transition-all duration-200 hover:bg-white/5 hover:text-white">
                 <House size={18} className="transition group-hover:scale-110" />

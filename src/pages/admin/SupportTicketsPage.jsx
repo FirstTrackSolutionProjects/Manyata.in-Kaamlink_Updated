@@ -1,13 +1,72 @@
-import { Empty, Panel, StatusSelect } from "./AdminShared";
+import { useState } from "react";
+import { CheckCircle2, Clock3, Inbox, LifeBuoy } from "lucide-react";
+import { StatusSelect } from "./AdminShared";
 import { filterRows } from "./adminUtils";
 import AdminPageFrame from "./AdminPageFrame";
 import useAdminSection from "./useAdminSection";
+import { Badge, Card, EmptyState, StatStrip } from "./AdminUI";
 
-function TicketsView({ rows, mutate }) { return <Panel title="Support queue"><table className="w-full min-w-[780px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-3">Ticket</th><th className="p-3">Booking</th><th className="p-3">Issue</th><th className="p-3">Opened</th><th className="p-3">Status</th></tr></thead><tbody className="divide-y divide-slate-100">{rows.map((row) => <tr key={row.id}><td className="p-3 font-bold">{row.ticket_ref}</td><td className="p-3">{row.booking_reference || "—"}</td><td className="max-w-lg p-3">{row.category || "General"}<p className="mt-1 line-clamp-2 text-slate-500">{row.description}</p></td><td className="p-3">{new Date(row.created_at).toLocaleDateString("en-IN")}</td><td className="p-3"><StatusSelect value={row.status} options={["new", "in_progress", "resolved", "closed"]} onChange={(status) => mutate(`/admin/tickets/${row.id}`, "PATCH", { status })} /></td></tr>)}</tbody></table>{!rows.length && <div className="p-5"><Empty>No support tickets.</Empty></div>}</Panel>; }
+const fmt = (d) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+
+function Tabs({ value, onChange, items }) {
+  return (
+    <div className="flex flex-wrap gap-2 border-b border-slate-100 px-5 py-3">
+      {items.map(([key, label, count]) => (
+        <button key={key} onClick={() => onChange(key)} className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${value === key ? "bg-slate-900 text-white shadow-md" : "bg-slate-100 text-slate-600 hover:bg-violet-50 hover:text-violet-700"}`}>
+          {label}
+          <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${value === key ? "bg-white/20" : "bg-white"}`}>{count}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function TicketsView({ rows, mutate }) {
+  const [tab, setTab] = useState("all");
+  const count = (s) => rows.filter((r) => r.status === s).length;
+  const shown = tab === "all" ? rows : rows.filter((r) => r.status === tab);
+
+  return (
+    <div className="space-y-6">
+      <StatStrip items={[
+        { label: "Total tickets", value: rows.length, Icon: LifeBuoy, tone: "violet" },
+        { label: "New", value: count("new"), Icon: Inbox, tone: "amber" },
+        { label: "In progress", value: count("in_progress"), Icon: Clock3, tone: "sky" },
+        { label: "Resolved / closed", value: count("resolved") + count("closed"), Icon: CheckCircle2, tone: "emerald" },
+      ]} />
+
+      <Card icon={LifeBuoy} title="Support queue" subtitle={`${shown.length} ticket${shown.length === 1 ? "" : "s"}`}>
+        <Tabs value={tab} onChange={setTab} items={[["all", "All", rows.length], ["new", "New", count("new")], ["in_progress", "In progress", count("in_progress")], ["resolved", "Resolved", count("resolved")], ["closed", "Closed", count("closed")]]} />
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[860px] text-left text-sm">
+            <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <tr><th className="px-5 py-3">Ticket</th><th className="px-3 py-3">Booking</th><th className="px-3 py-3">Issue</th><th className="px-3 py-3">Opened</th><th className="px-5 py-3">Status</th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {shown.map((row) => (
+                <tr key={row.id} className="align-top transition hover:bg-violet-50/40">
+                  <td className="px-5 py-4"><span className="rounded-lg bg-slate-900 px-2.5 py-1.5 font-mono text-xs font-extrabold tracking-wider text-white">{row.ticket_ref}</span></td>
+                  <td className="px-3 py-4 font-semibold text-slate-700">{row.booking_reference || "—"}</td>
+                  <td className="max-w-md px-3 py-4">
+                    <Badge tone="violet">{row.category || "General"}</Badge>
+                    <p className="mt-2 line-clamp-2 text-slate-500">{row.description}</p>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-4 text-slate-600">{fmt(row.created_at)}</td>
+                  <td className="px-5 py-4"><StatusSelect value={row.status} options={["new", "in_progress", "resolved", "closed"]} onChange={(status) => mutate(`/admin/tickets/${row.id}`, "PATCH", { status })} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!shown.length && <EmptyState icon={LifeBuoy} title={rows.length ? "Nothing in this tab" : "No support tickets"} text={rows.length ? "Try another status tab." : "Great news, there are no open issues right now."} />}
+      </Card>
+    </div>
+  );
+}
 
 export default function SupportTicketsPage() {
   const resource = useAdminSection("/admin/tickets");
   return <AdminPageFrame title="Support tickets" loading={resource.loading} error={resource.error} notice={resource.notice} onRefresh={resource.load}>
-    <TicketsView rows={filterRows(resource.data, "", ["ticket_ref", "booking_reference", "category", "description"])} mutate={resource.mutate} />
+    <TicketsView rows={filterRows(resource.data, "", ["ticket_ref", "booking_reference", "category", "description"]) || []} mutate={resource.mutate} />
   </AdminPageFrame>;
 }
