@@ -1,6 +1,6 @@
 import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
 import {
-  ArrowUpRight, BadgeCheck, BriefcaseBusiness, CalendarDays, ClipboardList, House,
+  BadgeCheck, BriefcaseBusiness, CalendarDays, ClipboardList,
   LayoutDashboard, LogOut, Mail, MapPinned, MessageSquareText, ShieldCheck, Users,
 } from "lucide-react";
 import { getSession, logoutSession } from "../../lib/api";
@@ -55,14 +55,6 @@ export default function AdminDashboard() {
           </Link>
 
           <nav className="admin-nav-scroll mt-5 flex gap-4 overflow-x-auto pb-1 lg:mt-4 lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-2 lg:overflow-y-auto lg:overflow-x-hidden lg:pb-3 lg:pr-1">
-            <div className="flex gap-1 lg:flex-col">
-              <Link to="/" className="group flex shrink-0 items-center gap-3 rounded-xl px-3 py-1.5 text-left text-sm font-semibold text-slate-400 transition-all duration-200 hover:bg-white/5 hover:text-white">
-                <House size={18} className="transition group-hover:scale-110" />
-                <span className="flex-1">Home page</span>
-                <ArrowUpRight size={15} className="hidden opacity-0 transition group-hover:opacity-100 lg:block" />
-              </Link>
-            </div>
-
             {groups.map((g) => (
               <div key={g.label} className="flex gap-1 lg:flex-col">
                 <p className="mb-1 hidden px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 lg:block">{g.label}</p>
@@ -80,6 +72,11 @@ export default function AdminDashboard() {
               </div>
             ))}
           </nav>
+
+          <Link to="/admin/overview" className="group relative z-10 mt-2 flex shrink-0 items-center gap-3 rounded-xl border border-violet-400/20 bg-violet-500/10 px-3 py-2.5 text-left text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20 hover:text-white lg:mt-0">
+            <LayoutDashboard size={18} className="transition group-hover:scale-110" />
+            <span className="flex-1">Go to dashboard</span>
+          </Link>
 
           <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur lg:mt-4">
             <div className="flex min-w-0 items-center gap-3">
