@@ -1,7 +1,7 @@
 import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
 import {
   BadgeCheck, BriefcaseBusiness, CalendarDays, ClipboardList,
-  LayoutDashboard, LogOut, Mail, MapPinned, MessageSquareText, ShieldCheck, Users,
+  Home, LayoutDashboard, LogOut, Mail, MapPinned, MessageSquareText, ShieldCheck, Users,
 } from "lucide-react";
 import { getSession, logoutSession } from "../../lib/api";
 
@@ -74,12 +74,12 @@ export default function AdminDashboard() {
           </nav>
 
           <Link
-            to="/admin"
+            to="/"
             onClick={() => window.scrollTo({ top: 0, left: 0, behavior: "smooth" })}
             className="group relative z-10 mt-2 flex shrink-0 items-center gap-3 rounded-xl border border-violet-400/20 bg-violet-500/10 px-3 py-2.5 text-left text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20 hover:text-white lg:mt-0"
           >
-            <LayoutDashboard size={18} className="transition group-hover:scale-110" />
-            <span className="flex-1">Go to dashboard</span>
+            <Home size={18} className="transition group-hover:scale-110" />
+            <span className="flex-1">Go to home page</span>
           </Link>
 
           <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur lg:mt-4">
