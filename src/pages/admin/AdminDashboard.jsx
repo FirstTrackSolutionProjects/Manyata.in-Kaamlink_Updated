@@ -73,7 +73,11 @@ export default function AdminDashboard() {
             ))}
           </nav>
 
-          <Link to="/admin/overview" className="group relative z-10 mt-2 flex shrink-0 items-center gap-3 rounded-xl border border-violet-400/20 bg-violet-500/10 px-3 py-2.5 text-left text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20 hover:text-white lg:mt-0">
+          <Link
+            to="/admin/overview"
+            onClick={() => window.scrollTo({ top: 0, left: 0, behavior: "smooth" })}
+            className="group relative z-10 mt-2 flex shrink-0 items-center gap-3 rounded-xl border border-violet-400/20 bg-violet-500/10 px-3 py-2.5 text-left text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20 hover:text-white lg:mt-0"
+          >
             <LayoutDashboard size={18} className="transition group-hover:scale-110" />
             <span className="flex-1">Go to dashboard</span>
           </Link>
