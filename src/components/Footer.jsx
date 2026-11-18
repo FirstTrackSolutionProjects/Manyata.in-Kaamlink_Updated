@@ -1,6 +1,6 @@
 
 import { Link } from "react-router-dom";
-import { Mail, Phone, ArrowUpRight } from "lucide-react";
+import { Mail, Phone, ArrowUpRight, MapPin } from "lucide-react";
 import { FaFacebookF, FaInstagram, FaTwitter } from "react-icons/fa";
 
 const SERVICE_LINKS = [
@@ -167,6 +167,16 @@ export default function Footer() {
                 <Mail size={14} className="shrink-0 text-brand-400" />
                 info@manyata.in
               </a>
+            </li>
+
+            <li className="flex items-start gap-2">
+              <MapPin size={14} className="mt-0.5 shrink-0 text-brand-400" />
+              <span>
+                <span className="block font-medium text-ivory">Kolkata Branch</span>
+                <span className="block leading-relaxed">
+                  Baruipur, near HP Petrol Pump, Kolkata, West Bengal – 700144
+                </span>
+              </span>
             </li>
 
             <li>
