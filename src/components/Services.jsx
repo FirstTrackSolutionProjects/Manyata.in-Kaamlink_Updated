@@ -22,6 +22,24 @@ import {
 } from "lucide-react";
 import { apiRequest, getSession } from "../lib/api";
 
+function loadRazorpayCheckout() {
+  if (window.Razorpay) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existing) {
+      existing.addEventListener("load", resolve, { once: true });
+      existing.addEventListener("error", reject, { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("Could not load the secure payment window. Please try again."));
+    document.body.appendChild(script);
+  });
+}
+
 const SERVICES = [
   {
     icon: Sparkles,
@@ -360,6 +378,10 @@ export default function Services({ onBookService }) {
   const [bookingError, setBookingError] = useState("");
   const [bookingSent, setBookingSent] = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingId, setBookingId] = useState(null);
+  const [bookingPaid, setBookingPaid] = useState(false);
+  const [paymentConfig, setPaymentConfig] = useState({ loaded: false, enabled: false });
+  const [paymentMode, setPaymentMode] = useState("after-service");
   const pages = useMemo(() => chunk(services, 3), [services]);
   const [page, setPage] = useState(0);
   const pausedRef = useRef(false);
@@ -377,6 +399,63 @@ export default function Services({ onBookService }) {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    apiRequest("/payments/config").then((data) => {
+      if (!active) return;
+      setPaymentConfig({ loaded: true, enabled: Boolean(data.enabled) });
+      if (data.enabled) setPaymentMode("online");
+    }).catch(() => {
+      if (active) setPaymentConfig({ loaded: true, enabled: false });
+    });
+    return () => { active = false; };
+  }, []);
+
+  const startOnlinePayment = async (id) => {
+    const session = getSession();
+    const order = await apiRequest(`/payments/bookings/${id}/order`, {
+      method: "POST",
+      token: session.token,
+      body: JSON.stringify({}),
+    });
+    await loadRazorpayCheckout();
+    const checkout = new window.Razorpay({
+      key: order.keyId,
+      amount: order.amount,
+      currency: order.currency,
+      name: "Manyata",
+      description: bookingService?.name || "Home service booking",
+      order_id: order.orderId,
+      prefill: {
+        name: session.user?.full_name || "",
+        email: session.user?.email || "",
+        contact: session.user?.phone || "",
+      },
+      theme: { color: "#ea580c" },
+      modal: { ondismiss: () => setBookingLoading(false) },
+      handler: async (response) => {
+        try {
+          await apiRequest(`/payments/bookings/${id}/verify`, {
+            method: "POST",
+            token: session.token,
+            body: JSON.stringify(response),
+          });
+          setBookingPaid(true);
+          setBookingSent(true);
+        } catch (error) {
+          setBookingError(error.message);
+        } finally {
+          setBookingLoading(false);
+        }
+      },
+    });
+    checkout.on("payment.failed", (response) => {
+      setBookingError(response.error?.description || "Payment did not complete. You can retry or pay after service.");
+      setBookingLoading(false);
+    });
+    checkout.open();
+  };
+
   const submitBooking = async (event) => {
     event.preventDefault();
     const session = getSession();
@@ -392,8 +471,17 @@ export default function Services({ onBookService }) {
     setBookingLoading(true);
     setBookingError("");
     try {
-      await apiRequest("/bookings", { method: "POST", token: session.token, body: JSON.stringify({ service_id: bookingService.apiId, address_line: form.get("address_line"), pincode: form.get("pincode"), slot_start: new Date(form.get("slot_start")).toISOString() }) });
-      setBookingSent(true);
+      let id = bookingId;
+      if (!id) {
+        const booking = await apiRequest("/bookings", { method: "POST", token: session.token, body: JSON.stringify({ service_id: bookingService.apiId, address_line: form.get("address_line"), pincode: form.get("pincode"), slot_start: new Date(form.get("slot_start")).toISOString() }) });
+        id = booking.id;
+        setBookingId(id);
+      }
+      if (paymentMode === "online") {
+        await startOnlinePayment(id);
+      } else {
+        setBookingSent(true);
+      }
     } catch (error) {
       setBookingError(error.message);
     } finally {
@@ -520,6 +608,9 @@ export default function Services({ onBookService }) {
                         else {
                           setBookingService(item);
                           setBookingSent(false);
+                          setBookingId(null);
+                          setBookingPaid(false);
+                          setPaymentMode(paymentConfig.enabled ? "online" : "after-service");
                           setBookingError("");
                         }
                       }}
@@ -627,13 +718,24 @@ export default function Services({ onBookService }) {
               <button type="button" onClick={() => setBookingService(null)} aria-label="Close booking form" className="rounded-full px-3 py-1 text-xl text-slate-500 hover:bg-slate-100">×</button>
             </div>
             {bookingSent ? (
-              <div className="mt-7 rounded-2xl bg-emerald-50 p-5 text-sm font-medium text-emerald-800">Your booking request is now pending. Review it in <Link className="font-bold underline" to="/account" onClick={() => setBookingService(null)}>My account</Link>.</div>
+              <div className="mt-7 rounded-2xl bg-emerald-50 p-5 text-sm font-medium text-emerald-800">{bookingPaid ? "Payment successful and booking request received." : "Your booking request is now pending. Pay after service."} Review it in <Link className="font-bold underline" to="/account" onClick={() => setBookingService(null)}>My account</Link>.</div>
             ) : getSession().token ? (
               <form onSubmit={submitBooking} className="mt-6 space-y-4">
                 <label className="block text-sm font-semibold text-slate-700">Service address<input name="address_line" required maxLength={255} placeholder="House, street, area" className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-normal outline-none focus:border-orange-500" /></label>
                 <div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-semibold text-slate-700">PIN code<input name="pincode" required pattern="[0-9]{6}" title="Enter a 6-digit PIN code" placeholder="756045" className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-normal outline-none focus:border-orange-500" /></label><label className="block text-sm font-semibold text-slate-700">Preferred date & time<input name="slot_start" type="datetime-local" required onFocus={(event) => { event.currentTarget.min = new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16); }} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm font-normal outline-none focus:border-orange-500" /></label></div>
+                <fieldset className="space-y-2 rounded-2xl border border-slate-200 p-4">
+                  <legend className="px-1 text-sm font-bold text-slate-800">Payment method</legend>
+                  <label className={`flex items-start gap-3 text-sm ${paymentConfig.enabled ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}>
+                    <input type="radio" name="payment_method" value="online" checked={paymentMode === "online"} disabled={!paymentConfig.enabled || Boolean(bookingId)} onChange={() => setPaymentMode("online")} className="mt-1 accent-orange-600" />
+                    <span><strong className="block text-slate-800">Pay online now</strong><span className="text-xs text-slate-500">UPI, cards and net banking via Razorpay{!paymentConfig.enabled && " (not configured yet)"}</span></span>
+                  </label>
+                  <label className={`flex items-start gap-3 text-sm ${bookingId ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
+                    <input type="radio" name="payment_method" value="after-service" checked={paymentMode === "after-service"} disabled={Boolean(bookingId)} onChange={() => setPaymentMode("after-service")} className="mt-1 accent-orange-600" />
+                    <span><strong className="block text-slate-800">Pay after service</strong><span className="text-xs text-slate-500">Your booking request will be sent without online payment.</span></span>
+                  </label>
+                </fieldset>
                 {bookingError && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{bookingError}</p>}
-                <button disabled={bookingLoading} className="w-full rounded-xl bg-orange-600 px-4 py-3.5 text-sm font-bold text-white hover:bg-orange-700 disabled:opacity-60">{bookingLoading ? "Sending request..." : "Request booking"}</button>
+                <button disabled={bookingLoading || (paymentMode === "online" && !paymentConfig.enabled)} className="w-full rounded-xl bg-orange-600 px-4 py-3.5 text-sm font-bold text-white hover:bg-orange-700 disabled:opacity-60">{bookingLoading ? (paymentMode === "online" ? "Opening secure checkout..." : "Sending request...") : bookingId ? "Retry online payment" : paymentMode === "online" ? `Pay ₹${bookingService.price.toLocaleString("en-IN")} and book` : "Request booking"}</button>
               </form>
             ) : (
               <div className="mt-6 rounded-2xl bg-slate-50 p-5"><p className="text-sm text-slate-600">Log in or create a Manyata account to request this booking.</p><div className="mt-4 flex gap-3"><Link to="/login" onClick={() => setBookingService(null)} className="rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-white">Log in</Link><Link to="/signup" onClick={() => setBookingService(null)} className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700">Sign up</Link></div></div>

@@ -26,7 +26,6 @@ import { profilePhotoDataUrl } from "../../utils/profilePhoto.js";
 
 const router = Router();
 const bookingStatuses = ["pending", "confirmed", "assigned", "in_progress", "completed", "cancelled", "refunded"];
-const paymentStatuses = ["unpaid", "paid", "refunded"];
 const ticketStatuses = ["new", "in_progress", "resolved", "closed"];
 const messageStatuses = ["new", "read", "replied", "archived"];
 const professionalStatuses = ["pending", "verified", "rejected"];
@@ -78,17 +77,18 @@ router.get("/bookings", [query("status").optional().isIn(bookingStatuses)], vali
 router.patch("/bookings/:id", [
   param("id").isInt({ min: 1 }),
   body("status").optional().isIn(bookingStatuses),
-  body("payment_status").optional().isIn(paymentStatuses),
   body("professional_id").optional({ nullable: true }).isInt({ min: 1 }),
 ], validate, asyncHandler(async (req, res) => {
   const booking = await Booking.findByPk(req.params.id);
   if (!booking) throw new ApiError(404, "Booking not found");
   const updates = {};
   if (req.body.status) updates.status = req.body.status;
-  if (req.body.payment_status) updates.payment_status = req.body.payment_status;
   if (Object.hasOwn(req.body, "professional_id")) {
     const professional = req.body.professional_id ? await Professional.findByPk(req.body.professional_id) : null;
     if (req.body.professional_id && !professional) throw new ApiError(404, "Professional not found");
+    if (professional && booking.payment_method === "razorpay" && booking.payment_status !== "paid") {
+      throw new ApiError(400, "This online booking must be paid before assigning a partner.");
+    }
     updates.professional_id = professional?.id ?? null;
     if (professional && (professional.verification_status !== "verified" || !professional.is_available)) {
       throw new ApiError(400, "Only verified, available professionals can be assigned");

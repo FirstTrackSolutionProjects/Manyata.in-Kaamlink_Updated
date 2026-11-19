@@ -1,4 +1,5 @@
 import { Booking, Service, Professional, Pincode } from "../../models/index.js";
+import { Op } from "sequelize";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiError } from "../../utils/ApiError.js";
 
@@ -30,6 +31,7 @@ export const createBooking = asyncHandler(async (req, res) => {
     slot_end: endTime,
     amount: service.base_price,
     status: "pending",
+    payment_method: "pay_after_service",
   });
 
   res.status(201).json({ success: true, data: booking });
@@ -46,7 +48,11 @@ export const getMyBookings = asyncHandler(async (req, res) => {
 export const getAvailableJobs = asyncHandler(async (req, res) => {
   // For now, let's just return all 'pending' bookings that have no professional assigned
   const jobs = await Booking.findAll({
-    where: { status: "pending", professional_id: null },
+    where: {
+      status: "pending",
+      professional_id: null,
+      [Op.or]: [{ payment_method: "pay_after_service" }, { payment_status: "paid" }],
+    },
     include: ["service"]
   });
   res.status(200).json({ success: true, data: jobs });

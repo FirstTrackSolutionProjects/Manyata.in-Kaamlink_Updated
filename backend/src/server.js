@@ -14,6 +14,7 @@ import availabilityRoutes from "./modules/availability/availability.routes.js";
 import newsletterRoutes from "./modules/newsletter/newsletter.routes.js";
 import supportRoutes from "./modules/support/support.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
+import paymentRoutes, { paymentWebhookHandler } from "./modules/payments/payment.routes.js";
 
 
 const app = express();
@@ -38,6 +39,8 @@ app.use(cors({
     return callback(new Error("This website is not allowed to access the Manyata API."));
   },
 }));
+// Razorpay signs the exact request bytes, so preserve the raw body before JSON parsing.
+app.post("/api/payments/webhook", express.raw({ type: "application/json", limit: "1mb" }), paymentWebhookHandler);
 app.use(express.json({ limit: "2mb" }));
 
 const limiter = rateLimit({
@@ -62,6 +65,7 @@ app.get("/api/health", async (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/payments", paymentRoutes);
 
 app.use("/api/contact", contactRoutes);
  app.use("/api/bookings", bookingRoutes);

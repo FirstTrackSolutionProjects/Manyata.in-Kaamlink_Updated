@@ -17,6 +17,10 @@ export default (sequelize) => {
     },
     amount: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
     payment_status: { type: DataTypes.ENUM('unpaid','paid','refunded'), defaultValue: 'unpaid' },
+    payment_method: { type: DataTypes.ENUM('pay_after_service', 'razorpay'), allowNull: false, defaultValue: 'pay_after_service' },
+    gateway_order_id: { type: DataTypes.STRING(64), allowNull: true, unique: true },
+    gateway_payment_id: { type: DataTypes.STRING(64), allowNull: true, unique: true },
+    gateway_refund_id: { type: DataTypes.STRING(64), allowNull: true, unique: true },
     notes: { type: DataTypes.TEXT, allowNull: true },
   }, {
     tableName: "bookings",

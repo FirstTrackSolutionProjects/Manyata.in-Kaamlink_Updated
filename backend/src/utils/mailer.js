@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import process from "node:process";
 import { ApiError } from "./ApiError.js";
 
 function getTransporter() {
@@ -16,7 +17,7 @@ function getTransporter() {
 }
 
 function escapeHtml(value = "") {
-  return value.replace(/[&<>\"']/g, (character) => ({
+  return value.replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;",
   })[character]);
 }
@@ -37,5 +38,42 @@ export async function sendPasswordResetEmail({ to, name, token }) {
     if (error instanceof ApiError) throw error;
     console.error("Password reset email could not be sent:", error.message);
     throw new ApiError(503, "We couldn't send the reset email right now. Please try again later.");
+  }
+}
+
+export async function sendContactNotificationEmail({ name, email, phone, subject, message }) {
+  const to = process.env.CONTACT_SERVICE_EMAIL || process.env.SMTP_FROM || process.env.SMTP_USER;
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+
+  if (!to || !from) {
+    throw new ApiError(503, "Contact notification email is not configured.");
+  }
+
+  const safeName = escapeHtml(name);
+  const safeEmail = escapeHtml(email);
+  const safePhone = escapeHtml(phone || "Not provided");
+  const safeSubject = escapeHtml(subject || "Website enquiry");
+  const safeMessage = escapeHtml(message).replace(/\r?\n/g, "<br>");
+
+  try {
+    await getTransporter().sendMail({
+      from: `Manyata <${from}>`,
+      to,
+      replyTo: email,
+      subject: `New website enquiry: ${subject || "General enquiry"}`,
+      text: [
+        "A new enquiry was submitted on Manyata.in.",
+        `Name: ${name}`,
+        `Email: ${email}`,
+        `Phone: ${phone || "Not provided"}`,
+        `Subject: ${subject || "Website enquiry"}`,
+        "Message:",
+        message,
+      ].join("\n"),
+      html: `<h2>New Manyata.in enquiry</h2><p><strong>Name:</strong> ${safeName}</p><p><strong>Email:</strong> ${safeEmail}</p><p><strong>Phone:</strong> ${safePhone}</p><p><strong>Subject:</strong> ${safeSubject}</p><p><strong>Message:</strong><br>${safeMessage}</p>`,
+    });
+  } catch (error) {
+    console.error("Contact notification email could not be sent:", error.message);
+    throw new ApiError(503, "We couldn't send the contact notification email.");
   }
 }
