@@ -175,7 +175,7 @@ router.get("/professionals", asyncHandler(async (_req, res) => {
     limit: 250,
     order: [["created_at", "DESC"]],
     include: [
-      { model: User, as: "user", attributes: ["id", "full_name", "email", "phone", "is_active", "created_at"] },
+      { model: User, as: "user", attributes: ["id", "full_name", "email", "phone", "is_active", "created_at"], where: { deleted_at: null } },
       { model: City, as: "city", attributes: ["id", "name", "state"] },
       { model: ServiceCategory, as: "categories", attributes: ["id", "name"], through: { attributes: [] } },
     ],
@@ -215,13 +215,44 @@ router.post("/professionals", [
 
 router.patch("/professionals/:id", [
   param("id").isInt({ min: 1 }),
+  body("full_name").optional().trim().notEmpty().isLength({ max: 120 }),
+  body("email").optional().trim().isEmail().normalizeEmail(),
+  body("phone").optional({ values: "falsy" }).trim().isLength({ min: 7, max: 15 }),
+  body("password").optional({ values: "falsy" }).isLength({ min: 12 }).withMessage("Set a password of at least 12 characters"),
+  body("city_id").optional({ nullable: true }).isInt({ min: 1 }),
+  body("bio").optional({ nullable: true }).isLength({ max: 10000 }),
+  body("experience_years").optional().isInt({ min: 0, max: 80 }),
+  body("category_ids").optional().isArray(),
   body("verification_status").optional().isIn(professionalStatuses),
   body("is_available").optional().isBoolean(),
   body("is_active").optional().isBoolean(),
 ], validate, asyncHandler(async (req, res) => {
   const professional = await Professional.findByPk(req.params.id, { include: [{ model: User, as: "user" }] });
   if (!professional) throw new ApiError(404, "Professional not found");
+  if (professional.user.deleted_at) throw new ApiError(404, "Partner not found");
+  const transaction = await User.sequelize.transaction();
+  try {
   const updates = {};
+  const userUpdates = {};
+  for (const key of ["full_name", "email", "phone"]) if (Object.hasOwn(req.body, key)) userUpdates[key] = req.body[key] || null;
+  for (const key of ["email", "phone"]) {
+    if (!userUpdates[key] || userUpdates[key] === professional.user[key]) continue;
+    if (await User.findOne({ where: { [key]: userUpdates[key], id: { [Op.ne]: professional.user.id } }, transaction })) {
+      throw new ApiError(409, `That ${key} is already used by another account.`);
+    }
+  }
+  if (req.body.password) {
+    userUpdates.password_hash = await bcrypt.hash(req.body.password, 12);
+    userUpdates.password_reset_token_hash = null;
+    userUpdates.password_reset_expires_at = null;
+  }
+  for (const key of ["city_id", "bio", "experience_years"]) if (Object.hasOwn(req.body, key)) updates[key] = req.body[key] === "" ? null : req.body[key];
+  if (Object.hasOwn(req.body, "city_id") && req.body.city_id && !await City.findByPk(req.body.city_id, { transaction })) throw new ApiError(404, "City not found");
+  let categoryIds;
+  if (Object.hasOwn(req.body, "category_ids")) {
+    categoryIds = [...new Set(req.body.category_ids.map(Number))];
+    if (categoryIds.length && await ServiceCategory.count({ where: { id: categoryIds }, transaction }) !== categoryIds.length) throw new ApiError(400, "One or more service categories were not found");
+  }
   for (const key of ["verification_status", "is_available"]) if (req.body[key] !== undefined) updates[key] = req.body[key];
   const nextStatus = updates.verification_status ?? professional.verification_status;
   const nextActive = req.body.is_active ?? professional.user.is_active;
@@ -229,9 +260,38 @@ router.patch("/professionals/:id", [
     throw new ApiError(400, "A professional must be verified and active before becoming available");
   }
   if (nextStatus !== "verified" || !nextActive) updates.is_available = false;
-  await professional.update(updates);
-  if (req.body.is_active !== undefined) await professional.user.update({ is_active: req.body.is_active });
-  res.json({ success: true, data: professional });
+  if (req.body.is_active !== undefined) userUpdates.is_active = req.body.is_active;
+  await professional.update(updates, { transaction });
+  if (Object.keys(userUpdates).length) await professional.user.update(userUpdates, { transaction });
+  if (req.body.password || req.body.is_active === false) {
+    await RefreshToken.update({ revoked: true }, { where: { user_id: professional.user.id, revoked: false }, transaction });
+  }
+  if (categoryIds) {
+    await ProfessionalService.destroy({ where: { professional_id: professional.id }, transaction });
+    if (categoryIds.length) await ProfessionalService.bulkCreate(categoryIds.map((category_id) => ({ professional_id: professional.id, category_id })), { transaction });
+  }
+  await transaction.commit();
+  res.json({ success: true, data: { id: professional.id } });
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+}));
+
+router.delete("/professionals/:id", [param("id").isInt({ min: 1 })], validate, asyncHandler(async (req, res) => {
+  const professional = await Professional.findByPk(req.params.id, { include: [{ model: User, as: "user" }] });
+  if (!professional || professional.user.deleted_at) throw new ApiError(404, "Partner not found");
+  const transaction = await User.sequelize.transaction();
+  try {
+    await professional.update({ is_available: false }, { transaction });
+    await professional.user.update({ is_active: false, deleted_at: new Date() }, { transaction });
+    await RefreshToken.update({ revoked: true }, { where: { user_id: professional.user.id, revoked: false }, transaction });
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+  res.json({ success: true, data: { id: professional.id, deleted: true } });
 }));
 
 router.get("/services", asyncHandler(async (_req, res) => {

@@ -41,8 +41,10 @@ export default function useAdminSection(endpoint) {
       await apiRequest(path, { token, method, body: JSON.stringify(body) });
       setNotice("Saved successfully.");
       await load();
+      return true;
     } catch (requestError) {
       handleError(requestError);
+      return false;
     }
   }, [handleError, load, token]);
 

@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   BadgeCheck, BriefcaseBusiness, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, EyeOff, LayoutGrid,
-  List as ListIcon, Mail, MapPin, Phone, Plus, RefreshCw, Search, SlidersHorizontal, UserCheck, UserPlus, Users, X,
+  List as ListIcon, Mail, MapPin, Pencil, Phone, Plus, RefreshCw, Search, SlidersHorizontal, Trash2, UserCheck, UserPlus, Users, X,
 } from "lucide-react";
 import AdminPageFrame from "./AdminPageFrame";
 import useAdminSection from "./useAdminSection";
 import { Badge, EmptyState, Field, StatStrip, Toggle, inputCls } from "./AdminUI";
 import { btn } from "./AdminUI.styles";
 
-const EMPTY_DRAFT = { full_name: "", email: "", phone: "", password: "", city_id: "", experience_years: "0", category_ids: [] };
+const EMPTY_DRAFT = { full_name: "", email: "", phone: "", password: "", city_id: "", experience_years: "0", bio: "", category_ids: [] };
 const DEFAULT_FILTERS = { verification: "all", availability: "all", account: "all", city: "all", minExp: "", sort: "default" };
 
 const PAGE_SIZES = [6, 9, 12, 24].map((n) => ({ value: n, label: `${n} per page` }));
@@ -282,6 +282,7 @@ function ProfessionalsView({ data = {}, mutate }) {
   const all = data.professionals || [];
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [showPw, setShowPw] = useState(false);
   const [query, setQuery] = useState("");
@@ -296,11 +297,27 @@ function ProfessionalsView({ data = {}, mutate }) {
     setFilters((f) => ({ ...f, ...patch }));
     setPage(1);
   };
-  const closeModal = () => { setModalOpen(false); setShowPw(false); };
+  const closeModal = () => { setModalOpen(false); setShowPw(false); setEditing(null); };
 
-  const submit = (event) => {
+  const openCreate = () => { setEditing(null); setDraft(EMPTY_DRAFT); setShowPw(false); setModalOpen(true); };
+  const openEdit = (row) => {
+    setEditing(row);
+    setDraft({
+      full_name: row.user?.full_name || "", email: row.user?.email || "", phone: row.user?.phone || "",
+      password: "", city_id: row.city_id ? String(row.city_id) : "", experience_years: String(row.experience_years ?? 0),
+      bio: row.bio || "", category_ids: (row.categories || []).map((c) => Number(c.id)),
+    });
+    setShowPw(false);
+    setModalOpen(true);
+  };
+
+  const submit = async (event) => {
     event.preventDefault();
-    mutate("/admin/professionals", "POST", { ...draft, city_id: draft.city_id || null, experience_years: Number(draft.experience_years) });
+    const body = { ...draft, city_id: draft.city_id || null, experience_years: Number(draft.experience_years) };
+    const saved = editing
+      ? await mutate(`/admin/professionals/${editing.id}`, "PATCH", body)
+      : await mutate("/admin/professionals", "POST", body);
+    if (!saved) return;
     setDraft(EMPTY_DRAFT);
     closeModal();
   };
@@ -310,6 +327,11 @@ function ProfessionalsView({ data = {}, mutate }) {
   const setVerification = (row, verification_status) => mutate(`/admin/professionals/${row.id}`, "PATCH", { verification_status });
   const setAvailable = (row) => mutate(`/admin/professionals/${row.id}`, "PATCH", { is_available: !row.is_available });
   const setAccount = (row) => mutate(`/admin/professionals/${row.id}`, "PATCH", { is_active: !row.user?.is_active });
+  const deletePartner = async (row) => {
+    const name = row.user?.full_name || "this partner";
+    if (!window.confirm(`Remove ${name} from the active partner list? Their booking history will be retained.`)) return;
+    await mutate(`/admin/professionals/${row.id}`, "DELETE", {});
+  };
 
   /* ---------- filtering, sorting, pagination ---------- */
   const cityOptions = cities.map((c) => ({ value: String(c.id), label: `${c.name}, ${c.state}` }));
@@ -390,7 +412,7 @@ function ProfessionalsView({ data = {}, mutate }) {
               <button key={key} onClick={() => setView(key)} aria-label={`${key} view`} className={`grid h-8 w-9 place-items-center rounded-lg transition ${view === key ? "bg-white text-violet-700 shadow" : "text-slate-500 hover:text-slate-800"}`}><Icon size={16} /></button>
             ))}
           </div>
-          <button onClick={() => setModalOpen(true)} className={btn.primary}><UserPlus size={16} /> Onboard partner</button>
+          <button onClick={openCreate} className={btn.primary}><UserPlus size={16} /> Onboard partner</button>
         </div>
 
         {/* Verification tabs */}
@@ -499,7 +521,11 @@ function ProfessionalsView({ data = {}, mutate }) {
 
                 <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
                   <Toggle on={!!row.is_available} label={row.is_available ? "Available" : "Unavailable"} onClick={() => setAvailable(row)} />
-                  <button onClick={() => setAccount(row)} className={active ? btn.danger : btn.success}>{active ? "Suspend" : "Restore"}</button>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => openEdit(row)} aria-label={`Edit ${row.user?.full_name}`} title="Edit partner" className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:border-violet-300 hover:text-violet-700"><Pencil size={14} /> Edit</button>
+                    <button type="button" onClick={() => deletePartner(row)} aria-label={`Remove ${row.user?.full_name}`} title="Remove partner" className="grid h-9 w-9 place-items-center rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50"><Trash2 size={15} /></button>
+                    <button onClick={() => setAccount(row)} className={active ? btn.danger : btn.success}>{active ? "Suspend" : "Restore"}</button>
+                  </div>
                 </div>
               </article>
             );
@@ -510,7 +536,7 @@ function ProfessionalsView({ data = {}, mutate }) {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[980px] text-left text-sm">
               <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                <tr><th className="px-5 py-3">Professional</th><th className="px-3 py-3">Location</th><th className="px-3 py-3">Experience</th><th className="px-3 py-3">Verification</th><th className="px-3 py-3">Availability</th><th className="px-5 py-3 text-right">Account</th></tr>
+                <tr><th className="px-5 py-3">Partner</th><th className="px-3 py-3">Location</th><th className="px-3 py-3">Experience</th><th className="px-3 py-3">Verification</th><th className="px-3 py-3">Availability</th><th className="px-5 py-3 text-right">Actions</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {visible.map((row) => {
@@ -530,7 +556,7 @@ function ProfessionalsView({ data = {}, mutate }) {
                       <td className="px-3 py-3 font-semibold text-slate-700">{row.experience_years} yrs</td>
                       <td className="w-72 px-3 py-3"><VerifySeg value={row.verification_status} onChange={(s) => setVerification(row, s)} /></td>
                       <td className="px-3 py-3"><Toggle on={!!row.is_available} label={row.is_available ? "Available" : "Unavailable"} onClick={() => setAvailable(row)} /></td>
-                      <td className="px-5 py-3 text-right"><button onClick={() => setAccount(row)} className={active ? btn.danger : btn.success}>{active ? "Suspend" : "Restore"}</button></td>
+                      <td className="px-5 py-3 text-right"><div className="inline-flex items-center gap-2"><button type="button" onClick={() => openEdit(row)} aria-label={`Edit ${row.user?.full_name}`} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:border-violet-300 hover:text-violet-700"><Pencil size={13} /> Edit</button><button type="button" onClick={() => deletePartner(row)} aria-label={`Remove ${row.user?.full_name}`} className="grid h-9 w-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50"><Trash2 size={14} /></button><button onClick={() => setAccount(row)} className={active ? btn.danger : btn.success}>{active ? "Suspend" : "Restore"}</button></div></td>
                     </tr>
                   );
                 })}
@@ -566,10 +592,10 @@ function ProfessionalsView({ data = {}, mutate }) {
       )}
 
       {/* Onboard modal */}
-      <Modal open={modalOpen} onClose={closeModal} icon={UserPlus} title="Onboard a partner" subtitle="New accounts start pending and unavailable until approved." wide>
+      <Modal open={modalOpen} onClose={closeModal} icon={editing ? Pencil : UserPlus} title={editing ? "Edit partner" : "Onboard a partner"} subtitle={editing ? "Update the partner profile, login, city and skills." : "New accounts start pending and unavailable until approved."} wide>
         <form onSubmit={submit}>
           <div className="grid gap-4 p-6 sm:grid-cols-2">
-            <Field label="Full name"><input required placeholder="Full name" value={draft.full_name} onChange={(e) => setDraft({ ...draft, full_name: e.target.value })} className={inputCls} /></Field>
+            <Field label="Full name"><input required maxLength="120" placeholder="Full name" value={draft.full_name} onChange={(e) => setDraft({ ...draft, full_name: e.target.value })} className={inputCls} /></Field>
             <Field label="Email"><input required type="email" placeholder="name@example.com" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} className={inputCls} /></Field>
             <Field label="Phone"><input placeholder="Phone number" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} className={inputCls} /></Field>
             <Field label="Experience (years)"><input type="number" min="0" max="80" placeholder="0" value={draft.experience_years} onChange={(e) => setDraft({ ...draft, experience_years: e.target.value })} className={inputCls} /></Field>
@@ -578,10 +604,10 @@ function ProfessionalsView({ data = {}, mutate }) {
               <Select value={draft.city_id} onChange={(v) => setDraft({ ...draft, city_id: v })} options={cityDraftOptions} placeholder="Choose city (optional)" />
             </Labeled>
 
-            <Labeled label="Temporary password">
+            <Labeled label={editing ? "New password (optional)" : "Temporary password"}>
               <div className="flex gap-2">
                 <div className="relative min-w-0 flex-1">
-                  <input required type={showPw ? "text" : "password"} minLength="12" autoComplete="new-password" placeholder="12+ characters" value={draft.password} onChange={(e) => setDraft({ ...draft, password: e.target.value })} className={`${inputCls} pr-11`} />
+                  <input required={!editing} type={showPw ? "text" : "password"} minLength="12" autoComplete="new-password" placeholder={editing ? "Leave blank to keep current password" : "12+ characters"} value={draft.password} onChange={(e) => setDraft({ ...draft, password: e.target.value })} className={`${inputCls} pr-11`} />
                   <button type="button" onClick={() => setShowPw((s) => !s)} aria-label={showPw ? "Hide password" : "Show password"} className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
                     {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -591,6 +617,8 @@ function ProfessionalsView({ data = {}, mutate }) {
                 </button>
               </div>
             </Labeled>
+
+            <div className="sm:col-span-2"><Field label="Partner bio"><textarea maxLength="10000" rows="3" placeholder="Experience, specialties, or introduction" value={draft.bio} onChange={(e) => setDraft({ ...draft, bio: e.target.value })} className={inputCls} /></Field></div>
 
             <div className="sm:col-span-2">
               <div className="mb-2 flex items-center justify-between gap-3">
@@ -620,7 +648,7 @@ function ProfessionalsView({ data = {}, mutate }) {
 
           <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4">
             <button type="button" onClick={closeModal} className={cancelBtn}>Cancel</button>
-            <button className={btn.primary}><Plus size={16} /> Create partner account</button>
+            <button className={btn.primary}>{editing ? <Pencil size={16} /> : <Plus size={16} />}{editing ? "Save changes" : "Create partner account"}</button>
           </div>
         </form>
       </Modal>
