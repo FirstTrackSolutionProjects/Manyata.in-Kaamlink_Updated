@@ -62,7 +62,7 @@ export const getMe = asyncHandler(async (req, res) => {
       address_line: req.user.address_line,
       city: req.user.city,
       pincode: req.user.pincode,
-      profile_photo: profilePhotoDataUrl(photo),
+      profile_photo: await profilePhotoDataUrl(photo),
     } },
   });
 });

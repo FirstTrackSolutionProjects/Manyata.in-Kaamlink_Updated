@@ -8,7 +8,8 @@ import { validate } from "../../middleware/validate.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { CustomerProfilePhoto, User } from "../../models/index.js";
-import { parseProfilePhoto, profilePhotoDataUrl } from "../../utils/profilePhoto.js";
+import { parseProfilePhoto } from "../../utils/profilePhoto.js";
+import { removeProfilePhotoObject, saveProfilePhoto } from "../../utils/profilePhotoStorage.js";
 
 const router = Router();
 const passwordResetLimiter = rateLimit({
@@ -62,11 +63,23 @@ router.patch("/me", requireAuth, [
 router.put("/me/photo", requireAuth, asyncHandler(async (req, res) => {
   if (req.user.role !== "customer") throw new ApiError(403, "Customer profile photos are only available for customer accounts.");
   const photo = parseProfilePhoto(req.body?.photo);
-  await CustomerProfilePhoto.upsert({ user_id: req.user.id, ...photo });
-  res.json({ success: true, data: { profile_photo: profilePhotoDataUrl(photo) } });
+  const previous = await CustomerProfilePhoto.findByPk(req.user.id);
+  const storedPhoto = await saveProfilePhoto(req.user.id, photo);
+  try {
+    await CustomerProfilePhoto.upsert(storedPhoto);
+  } catch (error) {
+    if (storedPhoto.object_key) await removeProfilePhotoObject(storedPhoto.object_key).catch(() => {});
+    throw error;
+  }
+  if (previous?.object_key && previous.object_key !== storedPhoto.object_key) {
+    await removeProfilePhotoObject(previous.object_key).catch((error) => console.error("Unable to remove replaced profile photo from S3:", error.message));
+  }
+  res.json({ success: true, data: { profile_photo: `data:${photo.mime_type};base64,${photo.image_data.toString("base64")}` } });
 }));
 router.delete("/me/photo", requireAuth, asyncHandler(async (req, res) => {
+  const photo = await CustomerProfilePhoto.findByPk(req.user.id);
   await CustomerProfilePhoto.destroy({ where: { user_id: req.user.id } });
+  if (photo?.object_key) await removeProfilePhotoObject(photo.object_key);
   res.json({ success: true, data: { profile_photo: null } });
 }));
 

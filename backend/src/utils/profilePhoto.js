@@ -1,4 +1,5 @@
 import { ApiError } from "./ApiError.js";
+import { readProfilePhotoBytes } from "./profilePhotoStorage.js";
 
 const MAX_PHOTO_BYTES = 900 * 1024;
 const signatures = {
@@ -17,7 +18,8 @@ export function parseProfilePhoto(value) {
   return { mime_type: mimeType, image_data: bytes };
 }
 
-export function profilePhotoDataUrl(photo) {
+export async function profilePhotoDataUrl(photo) {
   if (!photo) return null;
-  return `data:${photo.mime_type};base64,${Buffer.from(photo.image_data).toString("base64")}`;
+  const bytes = await readProfilePhotoBytes(photo);
+  return bytes ? `data:${photo.mime_type};base64,${bytes.toString("base64")}` : null;
 }

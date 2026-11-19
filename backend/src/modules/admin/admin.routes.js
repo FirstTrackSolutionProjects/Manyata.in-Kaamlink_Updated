@@ -174,7 +174,7 @@ router.post("/customers", [
 router.get("/customers/:id/photo", [param("id").isInt({ min: 1 })], validate, asyncHandler(async (req, res) => {
   const photo = await CustomerProfilePhoto.findByPk(req.params.id);
   if (!photo) throw new ApiError(404, "This customer has no profile photo.");
-  res.json({ success: true, data: { profile_photo: profilePhotoDataUrl(photo) } });
+  res.json({ success: true, data: { profile_photo: await profilePhotoDataUrl(photo) } });
 }));
 
 router.get("/customers/:id", [param("id").isInt({ min: 1 })], validate, asyncHandler(async (req, res) => {
@@ -185,7 +185,7 @@ router.get("/customers/:id", [param("id").isInt({ min: 1 })], validate, asyncHan
     Booking.findAll({ where: { user_id: customer.id }, order: [["created_at", "DESC"]], limit: 100, include: [{ model: Service, as: "service", attributes: ["id", "name"] }] }),
   ]);
   const { id, full_name, email, phone, address_line, city, pincode, is_active, deleted_at, created_at, updated_at } = customer;
-  res.json({ success: true, data: { id, full_name, email, phone, address_line, city, pincode, is_active, deleted_at, created_at, updated_at, profile_photo: profilePhotoDataUrl(photo), bookings } });
+  res.json({ success: true, data: { id, full_name, email, phone, address_line, city, pincode, is_active, deleted_at, created_at, updated_at, profile_photo: await profilePhotoDataUrl(photo), bookings } });
 }));
 
 router.patch("/customers/:id", [
