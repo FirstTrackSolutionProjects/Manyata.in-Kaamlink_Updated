@@ -24,7 +24,7 @@ router.post("/tickets", [
 }));
 
 router.get("/tickets", requireAuth, requireRole("admin"), asyncHandler(async (_req, res) => {
-  const tickets = await SupportTicket.findAll({ order: [["created_at", "DESC"]] });
+  const tickets = await SupportTicket.findAll({ where: { deleted_at: null }, order: [["created_at", "DESC"]] });
   res.json({ success: true, data: tickets });
 }));
 

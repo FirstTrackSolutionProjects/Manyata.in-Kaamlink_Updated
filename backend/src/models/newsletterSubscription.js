@@ -4,6 +4,7 @@ export default (sequelize) => sequelize.define("NewsletterSubscription", {
   id: { type: DataTypes.BIGINT.UNSIGNED, autoIncrement: true, primaryKey: true },
   email: { type: DataTypes.STRING(180), allowNull: false, unique: true },
   is_active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+  deleted_at: { type: DataTypes.DATE, allowNull: true },
 }, {
   tableName: "newsletter_subscriptions",
   timestamps: true,

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle2, Clock3, Inbox, LifeBuoy } from "lucide-react";
+import { CheckCircle2, Clock3, Inbox, LifeBuoy, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { StatusSelect } from "./AdminShared";
 import { filterRows } from "./adminUtils";
 import AdminPageFrame from "./AdminPageFrame";
@@ -23,24 +23,26 @@ function Tabs({ value, onChange, items }) {
 
 function TicketsView({ rows, mutate }) {
   const [tab, setTab] = useState("all");
-  const count = (s) => rows.filter((r) => r.status === s).length;
-  const shown = tab === "all" ? rows : rows.filter((r) => r.status === tab);
+  const [trash, setTrash] = useState(false);
+  const activeRows = rows.filter((r) => !!r.deleted_at === trash);
+  const count = (s) => activeRows.filter((r) => r.status === s).length;
+  const shown = tab === "all" ? activeRows : activeRows.filter((r) => r.status === tab);
 
   return (
     <div className="space-y-6">
       <StatStrip items={[
-        { label: "Total tickets", value: rows.length, Icon: LifeBuoy, tone: "violet" },
+        { label: trash ? "Deleted tickets" : "Total tickets", value: activeRows.length, Icon: LifeBuoy, tone: "violet" },
         { label: "New", value: count("new"), Icon: Inbox, tone: "amber" },
         { label: "In progress", value: count("in_progress"), Icon: Clock3, tone: "sky" },
         { label: "Resolved / closed", value: count("resolved") + count("closed"), Icon: CheckCircle2, tone: "emerald" },
       ]} />
 
-      <Card icon={LifeBuoy} title="Support queue" subtitle={`${shown.length} ticket${shown.length === 1 ? "" : "s"}`}>
-        <Tabs value={tab} onChange={setTab} items={[["all", "All", rows.length], ["new", "New", count("new")], ["in_progress", "In progress", count("in_progress")], ["resolved", "Resolved", count("resolved")], ["closed", "Closed", count("closed")]]} />
+      <Card icon={LifeBuoy} title="Support queue" subtitle={`${shown.length} ticket${shown.length === 1 ? "" : "s"}`} tools={<div className="flex gap-2"><button onClick={() => setTrash((v) => !v)} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold">{trash ? "Active tickets" : `Trash (${rows.filter((r) => r.deleted_at).length})`}</button><button onClick={async () => { const booking_reference = window.prompt("Booking reference (optional)") || ""; const category = window.prompt("Issue category", "General") || "General"; const description = window.prompt("Describe the issue"); if (!description) return; await mutate("/admin/tickets", "POST", { booking_reference, category, description }); }} className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white"><Plus size={14} /> Add ticket</button></div>}>
+        {!trash && <Tabs value={tab} onChange={setTab} items={[["all", "All", activeRows.length], ["new", "New", count("new")], ["in_progress", "In progress", count("in_progress")], ["resolved", "Resolved", count("resolved")], ["closed", "Closed", count("closed")]]} />}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] text-left text-sm">
             <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              <tr><th className="px-5 py-3">Ticket</th><th className="px-3 py-3">Booking</th><th className="px-3 py-3">Issue</th><th className="px-3 py-3">Opened</th><th className="px-5 py-3">Status</th></tr>
+              <tr><th className="px-5 py-3">Ticket</th><th className="px-3 py-3">Booking</th><th className="px-3 py-3">Issue</th><th className="px-3 py-3">Opened</th><th className="px-5 py-3">Actions</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {shown.map((row) => (
@@ -52,13 +54,13 @@ function TicketsView({ rows, mutate }) {
                     <p className="mt-2 line-clamp-2 text-slate-500">{row.description}</p>
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-slate-600">{fmt(row.created_at)}</td>
-                  <td className="px-5 py-4"><StatusSelect value={row.status} options={["new", "in_progress", "resolved", "closed"]} onChange={(status) => mutate(`/admin/tickets/${row.id}`, "PATCH", { status })} /></td>
+                  <td className="px-5 py-4">{trash ? <button onClick={() => mutate(`/admin/tickets/${row.id}/restore`, "POST", {})} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold"><RotateCcw size={13} /> Restore</button> : <div className="flex items-center gap-2"><StatusSelect value={row.status} options={["new", "in_progress", "resolved", "closed"]} onChange={(status) => mutate(`/admin/tickets/${row.id}`, "PATCH", { status })} /><button onClick={async () => { const category = window.prompt("Issue category", row.category || "General"); if (category === null) return; const booking_reference = window.prompt("Booking reference", row.booking_reference || ""); if (booking_reference === null) return; const description = window.prompt("Description", row.description); if (description === null) return; await mutate(`/admin/tickets/${row.id}`, "PATCH", { category, booking_reference, description }); }} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold">Edit</button><button aria-label="Move to trash" onClick={() => window.confirm("Move this ticket to trash?") && mutate(`/admin/tickets/${row.id}`, "DELETE")} className="rounded-lg border border-rose-200 p-2 text-rose-700"><Trash2 size={14} /></button></div>}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        {!shown.length && <EmptyState icon={LifeBuoy} title={rows.length ? "Nothing in this tab" : "No support tickets"} text={rows.length ? "Try another status tab." : "Great news, there are no open issues right now."} />}
+        {!shown.length && <EmptyState icon={LifeBuoy} title={activeRows.length ? "Nothing in this tab" : trash ? "Trash is empty" : "No support tickets"} text={activeRows.length ? "Try another status tab." : "Great news, there are no open issues right now."} />}
       </Card>
     </div>
   );

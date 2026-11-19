@@ -8,8 +8,8 @@ const router = Router();
 
 router.get("/:pincode", [param("pincode").matches(/^[1-9][0-9]{5}$/).withMessage("Enter a valid 6-digit PIN code")], validate, asyncHandler(async (req, res) => {
   const record = await Pincode.findOne({
-    where: { pincode: req.params.pincode, is_serviceable: true },
-    include: [{ model: City, attributes: ["name", "state"], where: { is_active: true }, required: true }],
+    where: { pincode: req.params.pincode, is_serviceable: true, deleted_at: null },
+    include: [{ model: City, attributes: ["name", "state"], where: { is_active: true, deleted_at: null }, required: true }],
   });
   res.json({
     success: true,

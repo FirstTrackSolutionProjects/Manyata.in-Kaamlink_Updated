@@ -9,6 +9,7 @@ export default (sequelize) => {
     subject: { type: DataTypes.STRING(200), allowNull: true },
     message: { type: DataTypes.TEXT, allowNull: false },
     status: { type: DataTypes.ENUM("new", "read", "replied", "archived"), defaultValue: "new" },
+    deleted_at: { type: DataTypes.DATE, allowNull: true },
   }, {
     tableName: "contact_messages",
     timestamps: true,

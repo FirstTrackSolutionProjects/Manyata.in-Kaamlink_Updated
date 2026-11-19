@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   BadgeCheck, BriefcaseBusiness, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, EyeOff, LayoutGrid,
-  List as ListIcon, Mail, MapPin, Pencil, Phone, Plus, RefreshCw, Search, SlidersHorizontal, Trash2, UserCheck, UserPlus, Users, X,
+  List as ListIcon, Mail, MapPin, Pencil, Phone, Plus, RefreshCw, RotateCcw, Search, SlidersHorizontal, Trash2, UserCheck, UserPlus, Users, X,
 } from "lucide-react";
 import AdminPageFrame from "./AdminPageFrame";
 import useAdminSection from "./useAdminSection";
@@ -288,6 +288,7 @@ function ProfessionalsView({ data = {}, mutate }) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState("grid");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(9);
@@ -332,6 +333,7 @@ function ProfessionalsView({ data = {}, mutate }) {
     if (!window.confirm(`Remove ${name} from the active partner list? Their booking history will be retained.`)) return;
     await mutate(`/admin/professionals/${row.id}`, "DELETE", {});
   };
+  const restorePartner = (row) => mutate(`/admin/professionals/${row.id}/restore`, "POST", {});
 
   /* ---------- filtering, sorting, pagination ---------- */
   const cityOptions = cities.map((c) => ({ value: String(c.id), label: `${c.name}, ${c.state}` }));
@@ -342,6 +344,7 @@ function ProfessionalsView({ data = {}, mutate }) {
   const minExp = filters.minExp === "" ? null : Number(filters.minExp);
 
   const matched = all.filter((r) => {
+    if (!!r.user?.deleted_at !== showDeleted) return false;
     if (filters.verification !== "all" && r.verification_status !== filters.verification) return false;
     if (filters.availability === "available" && !r.is_available) return false;
     if (filters.availability === "unavailable" && r.is_available) return false;
@@ -412,7 +415,8 @@ function ProfessionalsView({ data = {}, mutate }) {
               <button key={key} onClick={() => setView(key)} aria-label={`${key} view`} className={`grid h-8 w-9 place-items-center rounded-lg transition ${view === key ? "bg-white text-violet-700 shadow" : "text-slate-500 hover:text-slate-800"}`}><Icon size={16} /></button>
             ))}
           </div>
-          <button onClick={openCreate} className={btn.primary}><UserPlus size={16} /> Onboard partner</button>
+          <button onClick={() => setShowDeleted((value) => !value)} className={btn.ghost}>{showDeleted ? "Back to partners" : `Deleted (${all.filter((r) => r.user?.deleted_at).length})`}</button>
+          {!showDeleted && <button onClick={openCreate} className={btn.primary}><UserPlus size={16} /> Onboard partner</button>}
         </div>
 
         {/* Verification tabs */}
@@ -516,15 +520,17 @@ function ProfessionalsView({ data = {}, mutate }) {
 
                 <div className="mt-5">
                   <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Verification</span>
-                  <VerifySeg value={row.verification_status} onChange={(s) => setVerification(row, s)} />
+                  {row.user?.deleted_at ? <VerifyBadge status={row.verification_status} /> : <VerifySeg value={row.verification_status} onChange={(s) => setVerification(row, s)} />}
                 </div>
 
                 <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
-                  <Toggle on={!!row.is_available} label={row.is_available ? "Available" : "Unavailable"} onClick={() => setAvailable(row)} />
+                  {row.user?.deleted_at ? <span className="text-xs font-semibold text-rose-600">Removed from active partners</span> : <Toggle on={!!row.is_available} label={row.is_available ? "Available" : "Unavailable"} onClick={() => setAvailable(row)} />}
                   <div className="flex items-center gap-2">
+                    {row.user?.deleted_at ? <button type="button" onClick={() => restorePartner(row)} className={btn.success}><RotateCcw size={14} /> Restore</button> : <>
                     <button type="button" onClick={() => openEdit(row)} aria-label={`Edit ${row.user?.full_name}`} title="Edit partner" className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:border-violet-300 hover:text-violet-700"><Pencil size={14} /> Edit</button>
                     <button type="button" onClick={() => deletePartner(row)} aria-label={`Remove ${row.user?.full_name}`} title="Remove partner" className="grid h-9 w-9 place-items-center rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50"><Trash2 size={15} /></button>
                     <button onClick={() => setAccount(row)} className={active ? btn.danger : btn.success}>{active ? "Suspend" : "Restore"}</button>
+                    </>}
                   </div>
                 </div>
               </article>
@@ -554,9 +560,9 @@ function ProfessionalsView({ data = {}, mutate }) {
                       </td>
                       <td className="px-3 py-3 text-slate-600"><span className="inline-flex items-center gap-1.5"><MapPin size={14} className="text-slate-400" />{row.city?.name || "—"}</span></td>
                       <td className="px-3 py-3 font-semibold text-slate-700">{row.experience_years} yrs</td>
-                      <td className="w-72 px-3 py-3"><VerifySeg value={row.verification_status} onChange={(s) => setVerification(row, s)} /></td>
-                      <td className="px-3 py-3"><Toggle on={!!row.is_available} label={row.is_available ? "Available" : "Unavailable"} onClick={() => setAvailable(row)} /></td>
-                      <td className="px-5 py-3 text-right"><div className="inline-flex items-center gap-2"><button type="button" onClick={() => openEdit(row)} aria-label={`Edit ${row.user?.full_name}`} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:border-violet-300 hover:text-violet-700"><Pencil size={13} /> Edit</button><button type="button" onClick={() => deletePartner(row)} aria-label={`Remove ${row.user?.full_name}`} className="grid h-9 w-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50"><Trash2 size={14} /></button><button onClick={() => setAccount(row)} className={active ? btn.danger : btn.success}>{active ? "Suspend" : "Restore"}</button></div></td>
+                      <td className="w-72 px-3 py-3">{row.user?.deleted_at ? <VerifyBadge status={row.verification_status} /> : <VerifySeg value={row.verification_status} onChange={(s) => setVerification(row, s)} />}</td>
+                      <td className="px-3 py-3">{row.user?.deleted_at ? <span className="text-xs text-rose-600">Removed</span> : <Toggle on={!!row.is_available} label={row.is_available ? "Available" : "Unavailable"} onClick={() => setAvailable(row)} />}</td>
+                      <td className="px-5 py-3 text-right">{row.user?.deleted_at ? <button type="button" onClick={() => restorePartner(row)} className={btn.success}><RotateCcw size={14} /> Restore</button> : <div className="inline-flex items-center gap-2"><button type="button" onClick={() => openEdit(row)} aria-label={`Edit ${row.user?.full_name}`} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:border-violet-300 hover:text-violet-700"><Pencil size={13} /> Edit</button><button type="button" onClick={() => deletePartner(row)} aria-label={`Remove ${row.user?.full_name}`} className="grid h-9 w-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50"><Trash2 size={14} /></button><button onClick={() => setAccount(row)} className={active ? btn.danger : btn.success}>{active ? "Suspend" : "Restore"}</button></div>}</td>
                     </tr>
                   );
                 })}

@@ -23,6 +23,7 @@ export default (sequelize) => {
         allowNull: false,
         defaultValue: true,
       },
+      deleted_at: { type: DataTypes.DATE, allowNull: true },
     },
     {
       tableName: "cities",
