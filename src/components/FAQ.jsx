@@ -34,7 +34,7 @@ const FAQS = [
   },
   {
     q: "What payment methods are accepted?",
-    a: "We accept UPI, debit cards, credit cards, net banking, and cash. Payment is collected only after the service has been completed.",
+    a: "Available options are shown while booking. You may be able to pay online by UPI, card, or net banking through our payment provider, or pay after the service.",
     icon: CreditCard,
   },
 ];

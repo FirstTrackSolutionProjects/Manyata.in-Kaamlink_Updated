@@ -39,7 +39,7 @@ const TERMS_SECTIONS = [
     title: "Booking, Pricing & Payments",
     paragraphs: [
       "Prices displayed on the Platform are starting prices for the listed service category. Final pricing may vary based on the scope of work, materials required, and any additional services requested, and will be confirmed with you before work begins.",
-      "Payment can be made via UPI, credit/debit card, net banking, or cash, and is generally collected after the service is completed to your satisfaction, unless stated otherwise for a specific service category.",
+      "Payment options shown during booking may include online payment through a payment provider or payment after the service. Online payments are processed by the selected third-party provider; Manyata does not store full card details.",
     ],
   },
   {
