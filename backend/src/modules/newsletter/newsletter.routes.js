@@ -11,12 +11,12 @@ const router = Router();
 router.post("/", [body("email").trim().isEmail().normalizeEmail().withMessage("Please provide a valid email")], validate, asyncHandler(async (req, res) => {
   const email = req.body.email.toLowerCase();
   const [subscription, created] = await NewsletterSubscription.findOrCreate({ where: { email }, defaults: { email, is_active: true } });
-  if (!created && !subscription.is_active) await subscription.update({ is_active: true });
+  if (!created && (!subscription.is_active || subscription.deleted_at)) await subscription.update({ is_active: true, deleted_at: null });
   res.status(created ? 201 : 200).json({ success: true, data: { subscribed: true } });
 }));
 
 router.get("/", requireAuth, requireRole("admin"), asyncHandler(async (_req, res) => {
-  const subscriptions = await NewsletterSubscription.findAll({ where: { is_active: true }, order: [["created_at", "DESC"]], attributes: ["id", "email", "created_at"] });
+  const subscriptions = await NewsletterSubscription.findAll({ where: { is_active: true, deleted_at: null }, order: [["created_at", "DESC"]], attributes: ["id", "email", "created_at"] });
   res.json({ success: true, data: subscriptions });
 }));
 

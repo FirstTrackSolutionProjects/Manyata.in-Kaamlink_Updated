@@ -7,6 +7,7 @@ export default (sequelize) => sequelize.define("SupportTicket", {
   category: { type: DataTypes.STRING(120), allowNull: true },
   description: { type: DataTypes.TEXT, allowNull: false },
   status: { type: DataTypes.ENUM("new", "in_progress", "resolved", "closed"), allowNull: false, defaultValue: "new" },
+  deleted_at: { type: DataTypes.DATE, allowNull: true },
 }, {
   tableName: "support_tickets",
   timestamps: true,

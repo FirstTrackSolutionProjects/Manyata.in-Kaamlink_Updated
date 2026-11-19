@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   AlertTriangle, Building2, CalendarDays, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock,
-  Eye, Hash, IndianRupee, LayoutGrid, List as ListIcon, Loader2, Mail, MapPin, Pencil, Phone, Receipt, RotateCcw,
+  Eye, Hash, IndianRupee, LayoutGrid, List as ListIcon, Loader2, Mail, MapPin, Pencil, Phone, Plus, Receipt, RotateCcw,
   Save, Search, SlidersHorizontal, Trash2, User, UserCheck, UserPlus, UserX, Users, X, XCircle,
 } from "lucide-react";
 import { apiRequest } from "../../lib/api";
@@ -420,6 +420,8 @@ function CustomersView({ all, mutate, reload }) {
   const [confirm, setConfirm] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createDraft, setCreateDraft] = useState({ full_name: "", email: "", phone: "", password: "" });
   const [tab, setTab] = useState("all");
   const [query, setQuery] = useState("");
   const [view, setView] = useState("grid");
@@ -460,6 +462,13 @@ function CustomersView({ all, mutate, reload }) {
     await run(`/admin/customers/${confirm.id}`, "DELETE");
     setDeleting(false);
     setConfirm(null);
+  };
+
+  const createCustomer = async (event) => {
+    event.preventDefault();
+    setActionError("");
+    const saved = await mutate("/admin/customers", "POST", createDraft);
+    if (saved) { setCreateDraft({ full_name: "", email: "", phone: "", password: "" }); setCreateOpen(false); }
   };
 
   /* ---------- counts ---------- */
@@ -561,6 +570,7 @@ function CustomersView({ all, mutate, reload }) {
               <button key={key} onClick={() => setView(key)} aria-label={`${key} view`} className={`grid h-8 w-9 place-items-center rounded-lg transition ${view === key ? "bg-white text-violet-700 shadow" : "text-slate-500 hover:text-slate-800"}`}><Icon size={16} /></button>
             ))}
           </div>
+          {tab !== "deleted" && <button type="button" onClick={() => setCreateOpen((value) => !value)} className={btn.primary}><Plus size={15} /> Add customer</button>}
         </div>
 
         <div className="admin-nav-scroll -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
@@ -634,6 +644,17 @@ function CustomersView({ all, mutate, reload }) {
           </div>
         )}
       </div>
+
+      {createOpen && (
+        <form onSubmit={createCustomer} className="grid gap-4 rounded-2xl border border-violet-200 bg-white p-5 shadow-sm sm:grid-cols-2">
+          <div className="sm:col-span-2"><h2 className="font-extrabold text-slate-900">Create customer account</h2><p className="text-xs text-slate-500">Temporary password must be at least 12 characters.</p></div>
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Full name<input required maxLength="120" value={createDraft.full_name} onChange={(e) => setCreateDraft({ ...createDraft, full_name: e.target.value })} className={`${inputCls} mt-1.5`} /></label>
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Email<input required type="email" value={createDraft.email} onChange={(e) => setCreateDraft({ ...createDraft, email: e.target.value })} className={`${inputCls} mt-1.5`} /></label>
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Phone<input value={createDraft.phone} onChange={(e) => setCreateDraft({ ...createDraft, phone: e.target.value })} className={`${inputCls} mt-1.5`} /></label>
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Temporary password<input required minLength="12" type="password" autoComplete="new-password" value={createDraft.password} onChange={(e) => setCreateDraft({ ...createDraft, password: e.target.value })} className={`${inputCls} mt-1.5`} /></label>
+          <div className="flex justify-end gap-2 sm:col-span-2"><button type="button" onClick={() => setCreateOpen(false)} className={btn.ghost}>Cancel</button><button className={btn.primary}><UserPlus size={15} /> Create customer</button></div>
+        </form>
+      )}
 
       {actionError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-medium text-rose-700">{actionError}</p>}
 

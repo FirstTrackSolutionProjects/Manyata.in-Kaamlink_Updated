@@ -4,7 +4,7 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 export const getAllServices = asyncHandler(async (req, res) => {
   // Fetch all active services from MySQL
   const services = await Service.findAll({ 
-    where: { is_active: true } 
+    where: { is_active: true, deleted_at: null } 
   });
   
   res.status(200).json({ success: true, data: services });

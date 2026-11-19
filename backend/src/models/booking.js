@@ -22,6 +22,7 @@ export default (sequelize) => {
     gateway_payment_id: { type: DataTypes.STRING(64), allowNull: true, unique: true },
     gateway_refund_id: { type: DataTypes.STRING(64), allowNull: true, unique: true },
     notes: { type: DataTypes.TEXT, allowNull: true },
+    deleted_at: { type: DataTypes.DATE, allowNull: true },
   }, {
     tableName: "bookings",
     timestamps: true,

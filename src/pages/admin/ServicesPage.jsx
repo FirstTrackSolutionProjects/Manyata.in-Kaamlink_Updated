@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   BriefcaseBusiness, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock, EyeOff, FolderTree,
-  LayoutGrid, List as ListIcon, Pencil, Plus, Save, Search, SlidersHorizontal, Tags, X,
+  LayoutGrid, List as ListIcon, Pencil, Plus, RotateCcw, Save, Search, SlidersHorizontal, Tags, Trash2, X,
 } from "lucide-react";
 import AdminPageFrame from "./AdminPageFrame";
 import useAdminSection from "./useAdminSection";
@@ -266,6 +266,8 @@ function ServicesView({ data = {}, draft, setDraft, mutate }) {
   const [pageSize, setPageSize] = useState(9);
   const [categoryDraft, setCategoryDraft] = useState({ name: "", slug: "", description: "" });
   const [catQuery, setCatQuery] = useState("");
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [showDeletedCategories, setShowDeletedCategories] = useState(false);
   const resultsRef = useRef(null);
 
   const updateQuery = (value) => { setQuery(value); setPage(1); };
@@ -275,7 +277,7 @@ function ServicesView({ data = {}, draft, setDraft, mutate }) {
   const setF = updateFilters;
   const closeModal = () => { setModal(null); setEditing(null); setCatQuery(""); };
   const openEdit = (row) => {
-    setEditing({ id: row.id, name: row.name, slug: row.slug, category_id: String(row.category_id), base_price: String(row.base_price), duration_mins: String(row.duration_mins) });
+    setEditing({ id: row.id, name: row.name, slug: row.slug, description: row.description || "", category_id: String(row.category_id), base_price: String(row.base_price), duration_mins: String(row.duration_mins) });
     setModal("edit");
   };
 
@@ -302,6 +304,7 @@ function ServicesView({ data = {}, draft, setDraft, mutate }) {
   const max = filters.maxPrice === "" ? null : Number(filters.maxPrice);
 
   const matched = services.filter((s) => {
+    if (!!s.deleted_at !== showDeleted) return false;
     if (filters.category !== "all" && String(s.category_id) !== filters.category) return false;
     if (filters.status === "live" && !s.is_active) return false;
     if (filters.status === "hidden" && s.is_active) return false;
@@ -336,7 +339,7 @@ function ServicesView({ data = {}, draft, setDraft, mutate }) {
   if (filters.duration !== "any") pills.push({ key: "duration", label: DURATION_OPTIONS.find((o) => o.value === filters.duration)?.label, clear: { duration: "any" } });
   if (filters.sort !== "default") pills.push({ key: "sort", label: `Sort: ${SORT_OPTIONS.find((o) => o.value === filters.sort)?.label}`, clear: { sort: "default" } });
 
-  const live = services.filter((s) => s.is_active).length;
+  const live = services.filter((s) => !s.deleted_at && s.is_active).length;
   const catTerm = catQuery.trim().toLowerCase();
   const shownCategories = categories.filter((c) => !catTerm || `${c.name} ${c.slug}`.toLowerCase().includes(catTerm));
 
@@ -371,6 +374,7 @@ function ServicesView({ data = {}, draft, setDraft, mutate }) {
               <button key={key} onClick={() => setView(key)} aria-label={`${key} view`} className={`grid h-8 w-9 place-items-center rounded-lg transition ${view === key ? "bg-white text-violet-700 shadow" : "text-slate-500 hover:text-slate-800"}`}><Icon size={16} /></button>
             ))}
           </div>
+          <button onClick={() => { setShowDeleted((v) => !v); setPage(1); }} className={showDeleted ? btn.dark : btn.ghost}>{showDeleted ? "Active services" : `Trash (${services.filter((s) => s.deleted_at).length})`}</button>
           <button onClick={() => setModal("categories")} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"><Tags size={16} /> Categories</button>
           <button onClick={() => setModal("add")} className={btn.primary}><Plus size={16} /> Add service</button>
         </div>
@@ -464,8 +468,7 @@ function ServicesView({ data = {}, draft, setDraft, mutate }) {
               </div>
 
               <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-4">
-                <Toggle on={!!row.is_active} label={row.is_active ? "Live" : "Hidden"} onClick={() => mutate(`/admin/services/${row.id}`, "PATCH", { is_active: !row.is_active })} />
-                <button onClick={() => openEdit(row)} className={btn.ghost}><Pencil size={13} /> Edit</button>
+                {row.deleted_at ? <button onClick={() => mutate(`/admin/services/${row.id}/restore`, "POST", {})} className={btn.ghost}><RotateCcw size={13} /> Restore</button> : <><Toggle on={!!row.is_active} label={row.is_active ? "Live" : "Hidden"} onClick={() => mutate(`/admin/services/${row.id}`, "PATCH", { is_active: !row.is_active })} /><div className="flex gap-2"><button onClick={() => openEdit(row)} className={btn.ghost}><Pencil size={13} /> Edit</button><button title="Move to trash" onClick={() => window.confirm(`Move ${row.name} to trash?`) && mutate(`/admin/services/${row.id}`, "DELETE")} className={btn.ghost}><Trash2 size={14} /></button></div></>}
               </div>
             </article>
           ))}
@@ -489,8 +492,7 @@ function ServicesView({ data = {}, draft, setDraft, mutate }) {
                     <td className="px-3 py-3"><Status on={row.is_active} /></td>
                     <td className="px-5 py-3">
                       <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => openEdit(row)} className={btn.ghost}><Pencil size={13} /> Edit</button>
-                        <Toggle on={!!row.is_active} label={row.is_active ? "Hide" : "Publish"} onClick={() => mutate(`/admin/services/${row.id}`, "PATCH", { is_active: !row.is_active })} />
+                        {row.deleted_at ? <button onClick={() => mutate(`/admin/services/${row.id}/restore`, "POST", {})} className={btn.ghost}><RotateCcw size={13} /> Restore</button> : <><button onClick={() => openEdit(row)} className={btn.ghost}><Pencil size={13} /> Edit</button><Toggle on={!!row.is_active} label={row.is_active ? "Hide" : "Publish"} onClick={() => mutate(`/admin/services/${row.id}`, "PATCH", { is_active: !row.is_active })} /><button title="Move to trash" onClick={() => window.confirm(`Move ${row.name} to trash?`) && mutate(`/admin/services/${row.id}`, "DELETE")} className={btn.ghost}><Trash2 size={14} /></button></>}
                       </div>
                     </td>
                   </tr>
@@ -556,6 +558,7 @@ function ServicesView({ data = {}, draft, setDraft, mutate }) {
               <Labeled label="Category" className="sm:col-span-2">
                 <Select required value={editing.category_id} onChange={(v) => setEditing({ ...editing, category_id: v })} options={categoryOptions} placeholder="Select category" />
               </Labeled>
+              <Field label="Short description" className="sm:col-span-2"><input value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} className={inputCls} /></Field>
               <Field label="Starting price (₹)"><input required type="number" min="0" step="0.01" value={editing.base_price} onChange={(e) => setEditing({ ...editing, base_price: e.target.value })} className={inputCls} /></Field>
               <Field label="Duration (minutes)"><input required type="number" min="1" max="1440" value={editing.duration_mins} onChange={(e) => setEditing({ ...editing, duration_mins: e.target.value })} className={inputCls} /></Field>
             </div>
@@ -586,17 +589,17 @@ function ServicesView({ data = {}, draft, setDraft, mutate }) {
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input value={catQuery} onChange={(e) => setCatQuery(e.target.value)} placeholder="Search categories" className={`${inputCls} pl-9`} />
           </div>
-          <p className="mt-2 text-xs text-slate-400">{shownCategories.length} of {categories.length} categories</p>
+          <div className="mt-2 flex items-center justify-between"><p className="text-xs text-slate-400">{shownCategories.length} of {categories.length} categories</p><button onClick={() => setShowDeletedCategories((v) => !v)} className="text-xs font-bold text-violet-700">{showDeletedCategories ? "Show active" : `Show trash (${categories.filter((c) => c.deleted_at).length})`}</button></div>
         </div>
 
         <div className="divide-y divide-slate-100">
-          {shownCategories.map((category) => (
+          {shownCategories.filter((c) => !!c.deleted_at === showDeletedCategories).map((category) => (
             <div key={category.id} className="flex items-center justify-between gap-3 px-6 py-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-slate-800">{category.name}</p>
                 <p className="truncate text-xs text-slate-400">{category.slug} · {countIn(category.id)} {countIn(category.id) === 1 ? "service" : "services"}</p>
               </div>
-              <Toggle on={!!category.is_active} label={category.is_active ? "Live" : "Hidden"} onClick={() => mutate(`/admin/categories/${category.id}`, "PATCH", { is_active: !category.is_active })} />
+              {category.deleted_at ? <button onClick={() => mutate(`/admin/categories/${category.id}/restore`, "POST", {})} className={btn.ghost}><RotateCcw size={13} /> Restore</button> : <div className="flex items-center gap-2"><button title="Edit category" onClick={async () => { const name = window.prompt("Category name", category.name); if (name === null) return; const slug = window.prompt("Category slug", category.slug); if (slug === null) return; const description = window.prompt("Description", category.description || ""); if (description === null) return; await mutate(`/admin/categories/${category.id}`, "PATCH", { name, slug, description }); }} className={btn.ghost}><Pencil size={13} /> Edit</button><Toggle on={!!category.is_active} label={category.is_active ? "Live" : "Hidden"} onClick={() => mutate(`/admin/categories/${category.id}`, "PATCH", { is_active: !category.is_active })} /><button title="Move to trash" onClick={() => window.confirm(`Move ${category.name} and hide its services?`) && mutate(`/admin/categories/${category.id}`, "DELETE")} className={btn.ghost}><Trash2 size={14} /></button></div>}
             </div>
           ))}
           {!shownCategories.length && <EmptyState icon={Tags} title={categories.length ? "No matching categories" : "No categories yet"} text={categories.length ? "Try a different search." : "Add your first category above."} />}

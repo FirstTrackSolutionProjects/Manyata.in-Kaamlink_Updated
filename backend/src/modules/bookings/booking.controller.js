@@ -9,7 +9,7 @@ export const createBooking = asyncHandler(async (req, res) => {
   // req.user is set by requireAuth middleware
   const user_id = req.user.id;
 
-  const service = await Service.findByPk(service_id);
+  const service = await Service.findOne({ where: { id: service_id, deleted_at: null } });
   if (!service || !service.is_active) throw new ApiError(404, "Service not found");
 
   // Calculate slot_end based on service duration
@@ -17,7 +17,7 @@ export const createBooking = asyncHandler(async (req, res) => {
   if (!address_line?.trim() || !/^\d{6}$/.test(pincode || "") || Number.isNaN(startTime.getTime())) {
     throw new ApiError(400, "Enter a valid service address, 6-digit PIN code, and booking time");
   }
-  const coverage = await Pincode.findOne({ where: { pincode, is_serviceable: true } });
+  const coverage = await Pincode.findOne({ where: { pincode, is_serviceable: true, deleted_at: null } });
   if (!coverage) throw new ApiError(400, "Online services are not available at this PIN code yet.");
   if (startTime <= new Date()) throw new ApiError(400, "Booking time must be in the future");
   const endTime = new Date(startTime.getTime() + service.duration_mins * 60000);
@@ -39,7 +39,7 @@ export const createBooking = asyncHandler(async (req, res) => {
 
 export const getMyBookings = asyncHandler(async (req, res) => {
   const bookings = await Booking.findAll({
-    where: { user_id: req.user.id },
+    where: { user_id: req.user.id, deleted_at: null },
     include: ["service"] // Include the service details!
   });
   res.status(200).json({ success: true, data: bookings });
@@ -51,6 +51,7 @@ export const getAvailableJobs = asyncHandler(async (req, res) => {
     where: {
       status: "pending",
       professional_id: null,
+      deleted_at: null,
       [Op.or]: [{ payment_method: "pay_after_service" }, { payment_status: "paid" }],
     },
     include: ["service"]
@@ -78,7 +79,7 @@ export const acceptJob = asyncHandler(async (req, res) => {
 
 // For Admin: Get ALL bookings
 export const getAllBookings = asyncHandler(async (req, res) => {
-  const bookings = await Booking.findAll({
+  const bookings = await Booking.findAll({ where: { deleted_at: null },
     include: ["service", "user"]
   });
   res.status(200).json({ success: true, data: bookings });
