@@ -1,10 +1,44 @@
 import bcrypt from "bcryptjs";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { Op } from "sequelize";
 import { RefreshToken, User } from "../../models/index.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../utils/jwt.js";
+import { sendPasswordResetEmail } from "../../utils/mailer.js";
 
 const hashToken = (token) => createHash("sha256").update(token).digest("hex");
+
+export async function requestPasswordReset(email) {
+  const user = await User.findOne({ where: { email: email.trim().toLowerCase(), role: "customer", is_active: true, deleted_at: null } });
+  if (!user) return;
+
+  const token = randomBytes(32).toString("base64url");
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+  await user.update({ password_reset_token_hash: hashToken(token), password_reset_expires_at: expiresAt });
+  try {
+    await sendPasswordResetEmail({ to: user.email, name: user.full_name, token });
+  } catch (error) {
+    await user.update({ password_reset_token_hash: null, password_reset_expires_at: null });
+    throw error;
+  }
+}
+
+export async function resetPassword({ token, password }) {
+  const user = await User.findOne({
+    where: { password_reset_token_hash: hashToken(token), role: "customer", is_active: true, deleted_at: null },
+  });
+  if (!user || !user.password_reset_expires_at || new Date(user.password_reset_expires_at).getTime() <= Date.now()) {
+    throw new ApiError(400, "This reset link is invalid or expired. Request a new one.");
+  }
+
+  const password_hash = await bcrypt.hash(password, 10);
+  const [updatedCount] = await User.update(
+    { password_hash, password_reset_token_hash: null, password_reset_expires_at: null },
+    { where: { id: user.id, password_reset_token_hash: hashToken(token), password_reset_expires_at: { [Op.gt]: new Date() }, is_active: true, deleted_at: null } },
+  );
+  if (!updatedCount) throw new ApiError(400, "This reset link is invalid or expired. Request a new one.");
+  await RefreshToken.update({ revoked: true }, { where: { user_id: user.id, revoked: false } });
+}
 
 export async function signupUser({ full_name, email, phone, password }) {
   email = email.trim().toLowerCase();

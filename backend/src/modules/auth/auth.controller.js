@@ -15,6 +15,20 @@ export const login = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: result });
 });
 
+export const forgotPassword = asyncHandler(async (req, res) => {
+  await authService.requestPasswordReset(req.body.email);
+  res.status(200).json({
+    success: true,
+    message: "If an account exists for that email, a password reset link has been sent.",
+    data: { accepted: true },
+  });
+});
+
+export const resetPassword = asyncHandler(async (req, res) => {
+  await authService.resetPassword({ token: req.body.token, password: req.body.password });
+  res.status(200).json({ success: true, data: { passwordReset: true } });
+});
+
 export const googleLogin = asyncHandler(async (req, res) => {
   const result = await authService.loginWithGoogle({ credential: req.body.credential });
   res.status(200).json({ success: true, data: result });
