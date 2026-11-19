@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import useReveal from "../hooks/useReveal";
-import { aboutHero, teamMembers } from "../assets/asset";
+import { aboutHero } from "../assets/asset";
 
 // ==================== VALUES ====================
 
@@ -53,15 +53,6 @@ const TIMELINE = [
     year: "2026",
     text: "Working toward pan-India coverage, one verified professional at a time.",
   },
-];
-
-// ==================== TEAM ====================
-
-const TEAM = [
-  { name: "Arjun Khanna", role: "Co-founder & CEO" },
-  { name: "Divya Menon", role: "Co-founder & COO" },
-  { name: "Karan Rao", role: "Head of Operations" },
-  { name: "Sana Iyer", role: "Head of Trust & Safety" },
 ];
 
 // ==================== STATISTICS ====================
@@ -167,7 +158,6 @@ export default function About() {
   const [heroRef, heroIn] = useReveal();
   const [valuesRef, valuesIn] = useReveal();
   const [timelineRef, timelineIn] = useReveal();
-  const [teamRef, teamIn] = useReveal();
   const [ctaRef, ctaIn] = useReveal();
 
   // Stats animation
