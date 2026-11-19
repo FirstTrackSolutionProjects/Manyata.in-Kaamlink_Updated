@@ -7,8 +7,8 @@ const router = Router();
 
 router.post("/", requireAuth, requireRole("customer"), createBooking);
 router.get("/me", requireAuth, requireRole("customer"), getMyBookings);
-router.get("/available", requireAuth, requireRole("professional"), getAvailableJobs);
-router.patch("/:id/accept", requireAuth, requireRole("professional"), acceptJob);
+router.get("/available", requireAuth, requireRole("partner"), getAvailableJobs);
+router.patch("/:id/accept", requireAuth, requireRole("partner"), acceptJob);
 router.get("/all", requireAuth, requireRole("admin"), getAllBookings);
 
 export default router;

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { Op } from "sequelize";
 import { body } from "express-validator";
+import rateLimit from "express-rate-limit";
 import * as authController from "./auth.controller.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
@@ -10,6 +11,13 @@ import { CustomerProfilePhoto, User } from "../../models/index.js";
 import { parseProfilePhoto, profilePhotoDataUrl } from "../../utils/profilePhoto.js";
 
 const router = Router();
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { success: false, message: "Too many password reset attempts. Please try again in 15 minutes." },
+});
 
 router.post(
   "/signup",
@@ -24,6 +32,11 @@ router.post(
 );
 
 router.post("/login", [body("email").isEmail().withMessage("Please provide a valid email"), body("password").notEmpty().withMessage("Password is required")], validate, authController.login);
+router.post("/forgot-password", passwordResetLimiter, [body("email").isEmail().withMessage("Please provide a valid email").normalizeEmail()], validate, authController.forgotPassword);
+router.post("/reset-password", passwordResetLimiter, [
+  body("token").isString().isLength({ min: 32, max: 256 }).withMessage("This reset link is invalid or expired."),
+  body("password").isString().isLength({ min: 8, max: 128 }).withMessage("Password must be between 8 and 128 characters."),
+], validate, authController.resetPassword);
 router.post("/google", [body("credential").isString().notEmpty().withMessage("Google credential is required")], validate, authController.googleLogin);
 router.post("/refresh", [body("refreshToken").isString().notEmpty()], validate, authController.refresh);
 router.post("/refresh/bootstrap", requireAuth, authController.bootstrapSession);

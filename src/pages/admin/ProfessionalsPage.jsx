@@ -362,7 +362,7 @@ function ProfessionalsView({ data = {}, mutate }) {
   return (
     <div className="space-y-5">
       <StatStrip items={[
-        { label: "Total professionals", value: all.length, Icon: Users, tone: "violet" },
+        { label: "Total partners", value: all.length, Icon: Users, tone: "violet" },
         { label: "Verified", value: count("verified"), Icon: BadgeCheck, tone: "emerald" },
         { label: "Pending approval", value: count("pending"), Icon: Clock3, tone: "amber" },
         { label: "Available now", value: all.filter((p) => p.is_available).length, Icon: UserCheck, tone: "sky" },
@@ -390,7 +390,7 @@ function ProfessionalsView({ data = {}, mutate }) {
               <button key={key} onClick={() => setView(key)} aria-label={`${key} view`} className={`grid h-8 w-9 place-items-center rounded-lg transition ${view === key ? "bg-white text-violet-700 shadow" : "text-slate-500 hover:text-slate-800"}`}><Icon size={16} /></button>
             ))}
           </div>
-          <button onClick={() => setModalOpen(true)} className={btn.primary}><UserPlus size={16} /> Onboard professional</button>
+          <button onClick={() => setModalOpen(true)} className={btn.primary}><UserPlus size={16} /> Onboard partner</button>
         </div>
 
         {/* Verification tabs */}
@@ -434,7 +434,7 @@ function ProfessionalsView({ data = {}, mutate }) {
             </Labeled>
 
             <div className="flex items-center justify-between gap-3 sm:col-span-2 xl:col-span-5">
-              <p className="text-xs text-slate-500"><b className="text-slate-900">{sorted.length}</b> of {all.length} professionals match</p>
+              <p className="text-xs text-slate-500"><b className="text-slate-900">{sorted.length}</b> of {all.length} partners match</p>
               <button onClick={resetPanel} disabled={!pills.length} className={`${btn.ghost} disabled:cursor-not-allowed disabled:opacity-40`}>Reset filters</button>
             </div>
           </div>
@@ -458,7 +458,7 @@ function ProfessionalsView({ data = {}, mutate }) {
 
       {!sorted.length ? (
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <EmptyState icon={Users} title={all.length ? "No matching professionals" : "No professionals yet"} text={all.length ? "Try a different search, tab or filters." : "Click “Onboard professional” to add your first one."} />
+          <EmptyState icon={Users} title={all.length ? "No matching partners" : "No partners yet"} text={all.length ? "Try a different search, tab or filters." : "Click “Onboard partner” to add your first one."} />
           {all.length > 0 && (query || pills.length > 0 || filters.verification !== "all") && (
             <div className="-mt-3 pb-6 text-center">
               <button onClick={() => { setQuery(""); setFilters(DEFAULT_FILTERS); setPage(1); }} className={btn.ghost}>Clear search and filters</button>
@@ -544,7 +544,7 @@ function ProfessionalsView({ data = {}, mutate }) {
       {sorted.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
           <p className="text-sm text-slate-500">
-            Showing <b className="text-slate-900">{from}–{to}</b> of <b className="text-slate-900">{sorted.length}</b> professionals
+            Showing <b className="text-slate-900">{from}–{to}</b> of <b className="text-slate-900">{sorted.length}</b> partners
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <div className="w-40"><Select compact searchable={false} value={pageSize} onChange={(size) => { setPageSize(size); setPage(1); }} options={PAGE_SIZES} /></div>
@@ -566,7 +566,7 @@ function ProfessionalsView({ data = {}, mutate }) {
       )}
 
       {/* Onboard modal */}
-      <Modal open={modalOpen} onClose={closeModal} icon={UserPlus} title="Onboard a professional" subtitle="New accounts start pending and unavailable until approved." wide>
+      <Modal open={modalOpen} onClose={closeModal} icon={UserPlus} title="Onboard a partner" subtitle="New accounts start pending and unavailable until approved." wide>
         <form onSubmit={submit}>
           <div className="grid gap-4 p-6 sm:grid-cols-2">
             <Field label="Full name"><input required placeholder="Full name" value={draft.full_name} onChange={(e) => setDraft({ ...draft, full_name: e.target.value })} className={inputCls} /></Field>
@@ -620,7 +620,7 @@ function ProfessionalsView({ data = {}, mutate }) {
 
           <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4">
             <button type="button" onClick={closeModal} className={cancelBtn}>Cancel</button>
-            <button className={btn.primary}><Plus size={16} /> Create professional account</button>
+            <button className={btn.primary}><Plus size={16} /> Create partner account</button>
           </div>
         </form>
       </Modal>
@@ -630,7 +630,7 @@ function ProfessionalsView({ data = {}, mutate }) {
 
 export default function ProfessionalsPage() {
   const resource = useAdminSection("/admin/professionals");
-  return <AdminPageFrame title="Professionals" loading={resource.loading} error={resource.error} notice={resource.notice} onRefresh={resource.load}>
+  return <AdminPageFrame title="Partners" loading={resource.loading} error={resource.error} notice={resource.notice} onRefresh={resource.load}>
     <ProfessionalsView data={resource.data} mutate={resource.mutate} />
   </AdminPageFrame>;
 }

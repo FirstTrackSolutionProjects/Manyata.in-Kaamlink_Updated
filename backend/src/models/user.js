@@ -28,13 +28,15 @@ export default (sequelize) => {
         type: DataTypes.STRING(255),
         allowNull: true,
       },
+      password_reset_token_hash: { type: DataTypes.STRING(64), allowNull: true, unique: true },
+      password_reset_expires_at: { type: DataTypes.DATE, allowNull: true },
       auth_provider: {
         type: DataTypes.ENUM("local", "google"),
         allowNull: false,
         defaultValue: "local",
       },
       role: {
-        type: DataTypes.ENUM("customer", "professional", "admin"),
+        type: DataTypes.ENUM("customer", "partner", "admin"),
         allowNull: false,
         defaultValue: "customer",
       },

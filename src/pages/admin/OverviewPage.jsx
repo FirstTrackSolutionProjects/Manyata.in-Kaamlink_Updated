@@ -35,7 +35,7 @@ function OverviewView({ data, setSection }) {
     { label: "Bookings", value: stats.bookings, Icon: CalendarDays, dest: "bookings", tone: "violet", hint: "All bookings" },
     { label: "Awaiting action", value: stats.pendingBookings, Icon: Activity, dest: "bookings", tone: "amber", hint: "Needs your review" },
     { label: "Customers", value: stats.customers, Icon: Users, dest: "customers", tone: "sky", hint: "Registered users" },
-    { label: "Professionals", value: stats.professionals, Icon: BadgeCheck, dest: "professionals", tone: "emerald", hint: "On the platform" },
+    { label: "Partners", value: stats.professionals, Icon: BadgeCheck, dest: "professionals", tone: "emerald", hint: "On the platform" },
     { label: "Active services", value: stats.services, Icon: BriefcaseBusiness, dest: "services", tone: "indigo", hint: "Live in catalog" },
     { label: "Paid revenue", value: revenue, Icon: Banknote, dest: "bookings", tone: "emerald", hint: "Total received" },
     { label: "New messages", value: stats.newMessages, Icon: Mail, dest: "contact", tone: "fuchsia", hint: "Contact inbox" },
@@ -51,7 +51,7 @@ function OverviewView({ data, setSection }) {
 
   const quick = [
     ["Manage services", "services", BriefcaseBusiness],
-    ["Professionals", "professionals", BadgeCheck],
+    ["Partners", "professionals", BadgeCheck],
     ["Customers", "customers", Users],
     ["Service areas", "service-areas", MapPinned],
   ];

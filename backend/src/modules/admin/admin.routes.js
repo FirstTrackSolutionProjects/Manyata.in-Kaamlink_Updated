@@ -197,7 +197,7 @@ router.post("/professionals", [
     const password_hash = await bcrypt.hash(req.body.password, 12);
     if (req.body.city_id && !await City.findByPk(req.body.city_id, { transaction })) throw new ApiError(404, "City not found");
     if (req.body.bio && req.body.bio.length > 10000) throw new ApiError(400, "Professional bio is too long");
-    const user = await User.create({ full_name: req.body.full_name, email: req.body.email, phone: req.body.phone || null, password_hash, role: "professional", is_active: true, is_verified: false }, { transaction });
+    const user = await User.create({ full_name: req.body.full_name, email: req.body.email, phone: req.body.phone || null, password_hash, role: "partner", is_active: true, is_verified: false }, { transaction });
     const professional = await Professional.create({ user_id: user.id, city_id: req.body.city_id || null, bio: req.body.bio || null, experience_years: Number(req.body.experience_years || 0), verification_status: "pending", is_available: false }, { transaction });
     const categoryIds = [...new Set((req.body.category_ids || []).map(Number))];
     if (categoryIds.length) {

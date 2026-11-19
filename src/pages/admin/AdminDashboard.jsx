@@ -12,7 +12,7 @@ const groups = [
   ]},
   { label: "Catalog", items: [
     ["services", "Services", BriefcaseBusiness],
-    ["professionals", "Professionals", BadgeCheck],
+    ["professionals", "Partners", BadgeCheck],
     ["service-areas", "Service areas", MapPinned],
   ]},
   { label: "People", items: [

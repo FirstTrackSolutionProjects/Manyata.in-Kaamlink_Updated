@@ -9,6 +9,8 @@ import About from "./pages/About";
 import Blog from "./pages/Blog";
 import Contact from "./pages/Contact";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Signup from "./pages/Signup";
 import Account from "./pages/Account";
 
@@ -64,6 +66,8 @@ export default function App() {
 
           {/* Authentication Pages */}
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/account" element={<Account />} />
 
