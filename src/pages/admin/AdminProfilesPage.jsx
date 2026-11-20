@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BriefcaseBusiness, Building2, Camera, ContactRound, Mail, MapPin, Phone, Search, ShieldCheck, UserRound, X } from "lucide-react";
+import { BriefcaseBusiness, Building2, Camera, ContactRound, Mail, MapPin, Phone, Search, ShieldCheck, SlidersHorizontal, UserRound, X } from "lucide-react";
 import { apiRequest, getSession } from "../../lib/api";
 import AdminPageFrame from "./AdminPageFrame";
 import { Badge, EmptyState, StatStrip } from "./AdminUI";
@@ -12,6 +12,8 @@ export default function AdminProfilesPage() {
   const [profiles, setProfiles] = useState([]);
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("all");
+  const [filterField, setFilterField] = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
   const [selected, setSelected] = useState(null);
   const [photo, setPhoto] = useState("");
   const [loading, setLoading] = useState(true);
@@ -31,13 +33,14 @@ export default function AdminProfilesPage() {
     const matchesRole = role === "all" || item.role === role;
     const needle = search.trim().toLowerCase();
     const phoneNeedle = needle.replace(/\D/g, "");
-    const searchableText = [item.full_name, item.email, item.phone, item.city, ROLE[item.role], item.id]
+    const fields = { name: item.full_name, email: item.email, phone: item.phone, city: item.city, all: [item.full_name, item.email, item.phone, item.city, ROLE[item.role], item.id].join(" ") };
+    const searchableText = [fields[filterField]]
       .map((value) => String(value ?? "").toLowerCase());
     const phoneDigits = String(item.phone || "").replace(/\D/g, "");
     const matchesSearch = !needle || searchableText.some((value) => value.includes(needle)) ||
-      (phoneNeedle.length > 0 && phoneDigits.includes(phoneNeedle));
+      ((filterField === "all" || filterField === "phone") && phoneNeedle.length > 0 && phoneDigits.includes(phoneNeedle));
     return matchesRole && matchesSearch;
-  }), [profiles, role, search]);
+  }), [profiles, role, search, filterField]);
 
   const openProfile = async (item) => {
     setSelected(item); setPhoto("");
@@ -56,7 +59,7 @@ export default function AdminProfilesPage() {
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="flex flex-wrap gap-3 border-b border-slate-100 p-4">
         <label className="relative min-w-[220px] flex-1"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, email, phone, city" className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-violet-500" /></label>
-        <select value={role} onChange={(e) => setRole(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold"><option value="all">All roles</option>{Object.entries(ROLE).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
+        <div className="relative"><button type="button" aria-expanded={showFilters} onClick={() => setShowFilters((value) => !value)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:border-violet-300"><SlidersHorizontal size={16} /> Filter</button>{showFilters && <div className="absolute right-0 z-20 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-3 shadow-xl"><label className="block text-xs font-bold text-slate-500">Search field<select value={filterField} onChange={(e) => setFilterField(e.target.value)} className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"><option value="all">All fields</option><option value="name">Name</option><option value="email">Email</option><option value="phone">Phone number</option><option value="city">City</option></select></label><label className="mt-3 block text-xs font-bold text-slate-500">Role<select value={role} onChange={(e) => setRole(e.target.value)} className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"><option value="all">All roles</option>{Object.entries(ROLE).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label></div>}</div>
         <button onClick={load} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Refresh</button>
       </div>
       {error && <p role="alert" className="m-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
