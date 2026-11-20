@@ -1,6 +1,7 @@
-import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { NavLink, Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
-  BadgeCheck, BriefcaseBusiness, CalendarDays, ClipboardList,
+  BadgeCheck, BriefcaseBusiness, CalendarDays, ChevronDown, ClipboardList,
   Home, LayoutDashboard, LogOut, Mail, MapPinned, MessageSquareText, ShieldCheck, Users, UserRound, ContactRound,
 } from "lucide-react";
 import { getSession, logoutSession } from "../../lib/api";
@@ -31,6 +32,10 @@ const ownerItems = [
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const navRef = useRef(null);
+  const [edge, setEdge] = useState({ top: false, bottom: false });
+
   const session = getSession();
   const isOwner = session.user?.role === "admin";
   const permissions = new Set(session.user?.permissions || []);
@@ -39,6 +44,30 @@ export default function AdminDashboard() {
     await logoutSession();
     navigate("/admin/login", { replace: true });
   };
+
+  const updateEdge = () => {
+    const el = navRef.current;
+    if (!el) return;
+    setEdge({
+      top: el.scrollTop > 4,
+      bottom: el.scrollTop + el.clientHeight < el.scrollHeight - 4,
+    });
+  };
+
+  useEffect(() => {
+    updateEdge();
+    window.addEventListener("resize", updateEdge);
+    return () => window.removeEventListener("resize", updateEdge);
+  }, []);
+
+  // Keep the active menu item visible whenever the page changes
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      navRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: "nearest" });
+      updateEdge();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [location.pathname, isOwner]);
 
   const navClass = ({ isActive }) => `group relative flex shrink-0 items-center gap-3 rounded-xl px-3 py-1.5 text-left text-sm font-semibold transition-all duration-200 ${isActive ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-900/40" : "text-slate-400 hover:bg-white/5 hover:text-white"}`;
 
@@ -61,39 +90,65 @@ export default function AdminDashboard() {
             </span>
           </Link>
 
-          <nav className="admin-nav-scroll mt-5 flex gap-4 overflow-x-auto pb-1 lg:mt-4 lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-2 lg:overflow-y-auto lg:overflow-x-hidden lg:pb-3 lg:pr-1">
-            {[...visibleGroups, ...(isOwner ? ownerItems : [])].map((g) => (
-              <div key={g.label} className="flex gap-1 lg:flex-col">
-                <p className="mb-1 hidden px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 lg:block">{g.label}</p>
-                {g.items.map(([path, label, Icon]) => (
-                  <NavLink key={path} to={`/admin/${path}`} end className={navClass}>
-                    {({ isActive }) => (
-                      <>
-                        {isActive && <span className="absolute -left-1 top-1/2 hidden h-5 w-1 -translate-y-1/2 rounded-full bg-white lg:block" />}
-                        <Icon size={18} className="shrink-0 transition group-hover:scale-110" />
-                        <span className="whitespace-nowrap">{label}</span>
-                      </>
-                    )}
-                  </NavLink>
-                ))}
-              </div>
-            ))}
-          </nav>
+          {/* Scrollable menu with edge fades */}
+          <div className="relative mt-5 lg:mt-4 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+            <nav
+              ref={navRef}
+              onScroll={updateEdge}
+              className="flex gap-4 overflow-x-auto pb-1 lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-2 lg:overflow-y-auto lg:overflow-x-hidden lg:pb-3 lg:pr-1.5 [scrollbar-width:thin] [scrollbar-color:rgba(167,139,250,0.4)_transparent] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-violet-400/30 hover:[&::-webkit-scrollbar-thumb]:bg-violet-400/60 [&::-webkit-scrollbar-track]:bg-transparent"
+            >
+              {[...visibleGroups, ...(isOwner ? ownerItems : [])].map((g) => (
+                <div key={g.label} className="flex gap-1 lg:flex-col">
+                  <p className="mb-1 hidden px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 lg:block">{g.label}</p>
+                  {g.items.map(([path, label, Icon]) => (
+                    <NavLink key={path} to={`/admin/${path}`} end className={navClass}>
+                      {({ isActive }) => (
+                        <>
+                          {isActive && <span className="absolute -left-1 top-1/2 hidden h-5 w-1 -translate-y-1/2 rounded-full bg-white lg:block" />}
+                          <Icon size={18} className="shrink-0 transition group-hover:scale-110" />
+                          <span className="whitespace-nowrap">{label}</span>
+                        </>
+                      )}
+                    </NavLink>
+                  ))}
+                </div>
+              ))}
+            </nav>
 
-          <Link
-            to="/"
-            onClick={() => window.scrollTo({ top: 0, left: 0, behavior: "smooth" })}
-            className="group relative z-10 mt-2 flex shrink-0 items-center gap-3 rounded-xl border border-violet-400/20 bg-violet-500/10 px-3 py-2.5 text-left text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20 hover:text-white lg:mt-0"
-          >
-            <Home size={18} className="transition group-hover:scale-110" />
-            <span className="flex-1">Go to home page</span>
-          </Link>
+            <div className={`pointer-events-none absolute inset-x-0 top-0 hidden h-8 bg-gradient-to-b from-slate-950 to-transparent transition-opacity duration-200 lg:block ${edge.top ? "opacity-100" : "opacity-0"}`} />
+            <div className={`pointer-events-none absolute inset-x-0 bottom-0 hidden h-12 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent transition-opacity duration-200 lg:block ${edge.bottom ? "opacity-100" : "opacity-0"}`} />
+            {edge.bottom && (
+              <button
+                type="button"
+                onClick={() => navRef.current?.scrollBy({ top: 160, behavior: "smooth" })}
+                aria-label="Scroll menu down"
+                className="absolute bottom-1 left-1/2 hidden h-7 w-7 -translate-x-1/2 place-items-center rounded-full bg-violet-600 text-white shadow-lg shadow-violet-900/50 ring-1 ring-white/20 transition hover:bg-violet-500 lg:grid"
+              >
+                <ChevronDown size={16} className="animate-bounce" />
+              </button>
+            )}
+          </div>
 
-          <Link to="/account" className="group relative z-10 mt-2 flex shrink-0 items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white">
-            <Users size={18} className="transition group-hover:scale-110" /><span>My profile</span>
-          </Link>
+          {/* Compact quick links */}
+          <div className="relative z-10 mt-2 grid shrink-0 grid-cols-2 gap-2">
+            <Link
+              to="/"
+              onClick={() => window.scrollTo({ top: 0, left: 0, behavior: "smooth" })}
+              className="group flex items-center justify-center gap-2 rounded-xl border border-violet-400/20 bg-violet-500/10 px-2 py-2.5 text-xs font-bold text-violet-200 transition hover:bg-violet-500/20 hover:text-white"
+            >
+              <Home size={16} className="transition group-hover:scale-110" />
+              Home page
+            </Link>
+            <Link
+              to="/account"
+              className="group flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-2.5 text-xs font-bold text-slate-200 transition hover:bg-white/10 hover:text-white"
+            >
+              <Users size={16} className="transition group-hover:scale-110" />
+              My profile
+            </Link>
+          </div>
 
-          <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur lg:mt-4">
+          <div className="mt-2 flex shrink-0 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur">
             <div className="flex min-w-0 items-center gap-3">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-extrabold ring-2 ring-white/20">{initial}</span>
               <div className="min-w-0">
