@@ -36,9 +36,14 @@ export default (sequelize) => {
         defaultValue: "local",
       },
       role: {
-        type: DataTypes.ENUM("customer", "partner", "admin"),
+        type: DataTypes.ENUM("customer", "partner", "admin", "employee"),
         allowNull: false,
         defaultValue: "customer",
+      },
+      admin_permissions: {
+        type: DataTypes.JSON,
+        allowNull: false,
+        defaultValue: [],
       },
       is_verified: {
         type: DataTypes.BOOLEAN,

@@ -9,7 +9,7 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const session = getSession();
 
-  if (session.user?.role === "admin") return <Navigate to="/admin" replace />;
+  if (["admin", "employee"].includes(session.user?.role)) return <Navigate to="/admin" replace />;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -21,8 +21,8 @@ export default function AdminLogin() {
         method: "POST",
         body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
       });
-      if (result.user?.role !== "admin") {
-        setError("This account does not have owner/admin access.");
+      if (!["admin", "employee"].includes(result.user?.role)) {
+        setError("This account does not have owner or team access.");
         return;
       }
       saveSession(result);

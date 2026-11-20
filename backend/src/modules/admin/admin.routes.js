@@ -19,7 +19,7 @@ import {
   User,
 } from "../../models/index.js";
 import { requireAuth } from "../../middleware/auth.js";
-import { requireRole } from "../../middleware/authorize.js";
+import { ADMIN_PERMISSION_KEYS, ADMIN_SECTIONS, requireAdminConsole } from "./admin.permissions.js";
 import { validate } from "../../middleware/validate.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiError } from "../../utils/ApiError.js";
@@ -31,7 +31,7 @@ const ticketStatuses = ["new", "in_progress", "resolved", "closed"];
 const messageStatuses = ["new", "read", "replied", "archived"];
 const professionalStatuses = ["pending", "verified", "rejected"];
 
-router.use(requireAuth, requireRole("admin"));
+router.use(requireAuth, requireAdminConsole);
 
 router.get("/overview", asyncHandler(async (_req, res) => {
   const [customers, professionals, bookings, pendingBookings, services, newMessages, openTickets, revenue, recentBookings] = await Promise.all([
@@ -563,6 +563,128 @@ router.delete("/pincodes/:id", [param("id").isInt({ min: 1 })], validate, asyncH
 router.post("/pincodes/:id/restore", [param("id").isInt({ min: 1 })], validate, asyncHandler(async (req, res) => {
   const row = await Pincode.findByPk(req.params.id); if (!row || !row.deleted_at) throw new ApiError(404, "Deleted PIN code not found");
   await row.update({ deleted_at: null }); res.json({ success: true, data: { id: row.id, deleted_at: null } });
+}));
+
+// Owner-only people directory. Password hashes and reset tokens are never selected.
+router.get("/profiles", [query("search").optional().trim().isLength({ max: 120 }), query("role").optional().isIn(["customer", "partner", "employee", "admin"])], validate, asyncHandler(async (req, res) => {
+  const where = {};
+  if (req.query.role) where.role = req.query.role;
+  if (req.query.search) where[Op.or] = [
+    { full_name: { [Op.like]: `%${req.query.search}%` } },
+    { email: { [Op.like]: `%${req.query.search}%` } },
+    { phone: { [Op.like]: `%${req.query.search}%` } },
+  ];
+  const users = await User.findAll({
+    where,
+    attributes: ["id", "full_name", "email", "phone", "role", "is_verified", "is_active", "address_line", "city", "pincode", "admin_permissions", "created_at", "deleted_at"],
+    order: [["created_at", "DESC"]],
+    limit: 500,
+  });
+  const ids = users.map((user) => user.id);
+  const [professionals, photos] = ids.length ? await Promise.all([
+    Professional.findAll({ where: { user_id: ids }, attributes: ["id", "user_id", "city_id", "bio", "experience_years", "rating_avg", "rating_count", "verification_status", "is_available"] }),
+    CustomerProfilePhoto.findAll({ where: { user_id: ids }, attributes: ["user_id"] }),
+  ]) : [[], []];
+  const cityIds = [...new Set(professionals.map(({ city_id }) => city_id).filter(Boolean))];
+  const cities = cityIds.length ? await City.findAll({ where: { id: cityIds }, attributes: ["id", "name", "state"] }) : [];
+  const cityById = new Map(cities.map((city) => [String(city.id), { id: city.id, name: city.name, state: city.state }]));
+  const professionalByUser = new Map(professionals.map((professional) => [String(professional.user_id), professional]));
+  const photoIds = new Set(photos.map((photo) => String(photo.user_id)));
+  res.json({ success: true, data: users.map((user) => ({
+    ...user.toJSON(),
+    profile_photo_available: photoIds.has(String(user.id)),
+    professional: professionalByUser.has(String(user.id)) ? {
+      ...professionalByUser.get(String(user.id)).toJSON(),
+      city: cityById.get(String(professionalByUser.get(String(user.id)).city_id)) || null,
+    } : null,
+    account_status: user.deleted_at ? "deleted" : user.is_active ? "active" : "suspended",
+  })) });
+}));
+
+router.get("/profiles/:id/photo", [param("id").isInt({ min: 1 })], validate, asyncHandler(async (req, res) => {
+  const user = await User.findByPk(req.params.id, { attributes: ["id"] });
+  if (!user) throw new ApiError(404, "Profile not found");
+  const photo = await CustomerProfilePhoto.findByPk(user.id);
+  res.json({ success: true, data: { profile_photo: await profilePhotoDataUrl(photo) } });
+}));
+
+router.get("/team", asyncHandler(async (_req, res) => {
+  const employees = await User.findAll({
+    where: { role: "employee" },
+    attributes: ["id", "full_name", "email", "phone", "admin_permissions", "is_active", "created_at", "deleted_at"],
+    order: [["created_at", "DESC"]],
+  });
+  res.json({ success: true, data: { employees, sections: ADMIN_SECTIONS } });
+}));
+
+router.post("/team", [
+  body("full_name").trim().notEmpty().isLength({ max: 120 }),
+  body("email").trim().isEmail().normalizeEmail(),
+  body("phone").optional({ values: "falsy" }).trim().isLength({ min: 7, max: 15 }),
+  body("password").isString().isLength({ min: 12, max: 128 }),
+  body("permissions").isArray({ max: ADMIN_PERMISSION_KEYS.length }),
+  body("permissions.*").isIn(ADMIN_PERMISSION_KEYS),
+], validate, asyncHandler(async (req, res) => {
+  const email = req.body.email.toLowerCase();
+  if (await User.findOne({ where: { email } })) throw new ApiError(409, "An account with this email already exists.");
+  const user = await User.create({
+    full_name: req.body.full_name,
+    email,
+    phone: req.body.phone || null,
+    password_hash: await bcrypt.hash(req.body.password, 12),
+    role: "employee",
+    admin_permissions: [...new Set(req.body.permissions)],
+    is_verified: true,
+    is_active: true,
+  });
+  res.status(201).json({ success: true, data: { employee: {
+    id: user.id, full_name: user.full_name, email: user.email, phone: user.phone,
+    admin_permissions: user.admin_permissions, is_active: user.is_active, created_at: user.created_at,
+  } } });
+}));
+
+router.patch("/team/:id", [
+  param("id").isInt({ min: 1 }),
+  body("full_name").optional().trim().notEmpty().isLength({ max: 120 }),
+  body("phone").optional({ nullable: true }).trim().isLength({ min: 7, max: 15 }),
+  body("permissions").optional().isArray({ max: ADMIN_PERMISSION_KEYS.length }),
+  body("permissions.*").optional().isIn(ADMIN_PERMISSION_KEYS),
+  body("is_active").optional().isBoolean(),
+  body("password").optional().isString().isLength({ min: 12, max: 128 }),
+], validate, asyncHandler(async (req, res) => {
+  const employee = await User.findOne({ where: { id: req.params.id, role: "employee" } });
+  if (!employee) throw new ApiError(404, "Employee account not found.");
+  const updates = {};
+  for (const key of ["full_name", "phone", "is_active"]) if (Object.hasOwn(req.body, key)) updates[key] = req.body[key];
+  if (updates.phone) {
+    const duplicate = await User.findOne({ where: { phone: updates.phone, id: { [Op.ne]: employee.id } } });
+    if (duplicate) throw new ApiError(409, "That phone number is already used by another account.");
+  }
+  if (Object.hasOwn(req.body, "permissions")) updates.admin_permissions = [...new Set(req.body.permissions)];
+  if (req.body.password) updates.password_hash = await bcrypt.hash(req.body.password, 12);
+  await employee.update(updates);
+  if (Object.hasOwn(req.body, "is_active") && !req.body.is_active || req.body.password || Object.hasOwn(req.body, "permissions")) {
+    await RefreshToken.update({ revoked: true }, { where: { user_id: employee.id, revoked: false } });
+  }
+  res.json({ success: true, data: { employee: {
+    id: employee.id, full_name: employee.full_name, email: employee.email, phone: employee.phone,
+    admin_permissions: employee.admin_permissions, is_active: employee.is_active, created_at: employee.created_at,
+  } } });
+}));
+
+router.delete("/team/:id", [param("id").isInt({ min: 1 })], validate, asyncHandler(async (req, res) => {
+  const employee = await User.findOne({ where: { id: req.params.id, role: "employee" } });
+  if (!employee) throw new ApiError(404, "Employee account not found.");
+  await employee.update({ is_active: false, deleted_at: new Date() });
+  await RefreshToken.update({ revoked: true }, { where: { user_id: employee.id, revoked: false } });
+  res.json({ success: true, data: { id: employee.id, deleted: true } });
+}));
+
+router.post("/team/:id/restore", [param("id").isInt({ min: 1 })], validate, asyncHandler(async (req, res) => {
+  const employee = await User.findOne({ where: { id: req.params.id, role: "employee", deleted_at: { [Op.not]: null } } });
+  if (!employee) throw new ApiError(404, "Deleted employee account not found.");
+  await employee.update({ is_active: true, deleted_at: null });
+  res.json({ success: true, data: { id: employee.id, restored: true } });
 }));
 
 export default router;

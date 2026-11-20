@@ -3,6 +3,6 @@ import { getSession } from "../../lib/api";
 
 export default function AdminGate({ children }) {
   const { token, user } = getSession();
-  if (!token || user?.role !== "admin") return <Navigate to="/admin/login" replace />;
+  if (!token || !["admin", "employee"].includes(user?.role)) return <Navigate to="/admin/login" replace />;
   return children;
 }

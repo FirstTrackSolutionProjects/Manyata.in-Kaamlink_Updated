@@ -31,6 +31,9 @@ import ContactInboxPage from "./pages/admin/ContactInboxPage";
 import SupportTicketsPage from "./pages/admin/SupportTicketsPage";
 import ServiceAreasPage from "./pages/admin/ServiceAreasPage";
 import NewsletterPage from "./pages/admin/NewsletterPage";
+import AdminProfilesPage from "./pages/admin/AdminProfilesPage";
+import TeamAccessPage from "./pages/admin/TeamAccessPage";
+import AdminSectionGate from "./pages/admin/AdminSectionGate";
 
 import FAQ from "./components/FAQ";
 
@@ -43,16 +46,18 @@ export default function App() {
       <Routes>
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<AdminGate><AdminDashboard /></AdminGate>}>
-          <Route index element={<Navigate to="/admin/overview" replace />} />
-          <Route path="overview" element={<OverviewPage />} />
-          <Route path="bookings" element={<BookingsPage />} />
-          <Route path="services" element={<ServicesPage />} />
-          <Route path="professionals" element={<ProfessionalsPage />} />
-          <Route path="customers" element={<CustomersPage />} />
-          <Route path="contact" element={<ContactInboxPage />} />
-          <Route path="tickets" element={<SupportTicketsPage />} />
-          <Route path="service-areas" element={<ServiceAreasPage />} />
-          <Route path="newsletter" element={<NewsletterPage />} />
+          <Route index element={<Navigate to="overview" replace />} />
+          <Route path="overview" element={<AdminSectionGate section="overview"><OverviewPage /></AdminSectionGate>} />
+          <Route path="bookings" element={<AdminSectionGate section="bookings"><BookingsPage /></AdminSectionGate>} />
+          <Route path="services" element={<AdminSectionGate section="services"><ServicesPage /></AdminSectionGate>} />
+          <Route path="professionals" element={<AdminSectionGate section="professionals"><ProfessionalsPage /></AdminSectionGate>} />
+          <Route path="customers" element={<AdminSectionGate section="customers"><CustomersPage /></AdminSectionGate>} />
+          <Route path="contact" element={<AdminSectionGate section="contact"><ContactInboxPage /></AdminSectionGate>} />
+          <Route path="tickets" element={<AdminSectionGate section="tickets"><SupportTicketsPage /></AdminSectionGate>} />
+          <Route path="service-areas" element={<AdminSectionGate section="service-areas"><ServiceAreasPage /></AdminSectionGate>} />
+          <Route path="newsletter" element={<AdminSectionGate section="newsletter"><NewsletterPage /></AdminSectionGate>} />
+          <Route path="profiles" element={<AdminProfilesPage />} />
+          <Route path="team" element={<TeamAccessPage />} />
           <Route path="*" element={<Navigate to="/admin/overview" replace />} />
         </Route>
         {/* Older admin account links pointed here; keep them from rendering a blank route. */}
