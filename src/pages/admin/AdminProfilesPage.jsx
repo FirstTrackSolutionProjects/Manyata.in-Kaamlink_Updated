@@ -30,7 +30,12 @@ export default function AdminProfilesPage() {
   const filtered = useMemo(() => profiles.filter((item) => {
     const matchesRole = role === "all" || item.role === role;
     const needle = search.trim().toLowerCase();
-    const matchesSearch = !needle || [item.full_name, item.email, item.phone, item.city, item.role].some((value) => String(value || "").toLowerCase().includes(needle));
+    const phoneNeedle = needle.replace(/\D/g, "");
+    const searchableText = [item.full_name, item.email, item.phone, item.city, ROLE[item.role], item.id]
+      .map((value) => String(value ?? "").toLowerCase());
+    const phoneDigits = String(item.phone || "").replace(/\D/g, "");
+    const matchesSearch = !needle || searchableText.some((value) => value.includes(needle)) ||
+      (phoneNeedle.length > 0 && phoneDigits.includes(phoneNeedle));
     return matchesRole && matchesSearch;
   }), [profiles, role, search]);
 
