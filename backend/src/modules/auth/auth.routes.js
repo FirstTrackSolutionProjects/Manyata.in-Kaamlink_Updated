@@ -7,7 +7,7 @@ import { requireAuth } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiError } from "../../utils/ApiError.js";
-import { CustomerProfilePhoto, User } from "../../models/index.js";
+import { CustomerProfilePhoto, Professional, User, City } from "../../models/index.js";
 import { parseProfilePhoto } from "../../utils/profilePhoto.js";
 import { removeProfilePhotoObject, saveProfilePhoto } from "../../utils/profilePhotoStorage.js";
 
@@ -49,8 +49,10 @@ router.patch("/me", requireAuth, [
   body("address_line").optional({ values: "falsy" }).trim().isLength({ max: 255 }),
   body("city").optional({ values: "falsy" }).trim().isLength({ max: 100 }),
   body("pincode").optional({ values: "falsy" }).trim().matches(/^[0-9]{6}$/),
+  body("bio").optional({ nullable: true }).isLength({ max: 5000 }),
+  body("experience_years").optional().isInt({ min: 0, max: 60 }),
+  body("city_id").optional({ nullable: true }).isInt({ min: 1 }),
 ], validate, asyncHandler(async (req, res) => {
-  if (req.user.role !== "customer") throw new ApiError(403, "Customer profile editing is only available for customer accounts.");
   const keys = ["full_name", "phone", "address_line", "city", "pincode"];
   const updates = Object.fromEntries(keys.filter((key) => Object.hasOwn(req.body, key)).map((key) => [key, req.body[key] || null]));
   if (updates.phone) {
@@ -58,10 +60,18 @@ router.patch("/me", requireAuth, [
     if (duplicate) throw new ApiError(409, "That phone number is already used by another account.");
   }
   await req.user.update(updates);
-  res.json({ success: true, data: { user: { id: req.user.id, full_name: req.user.full_name, email: req.user.email, phone: req.user.phone, address_line: req.user.address_line, city: req.user.city, pincode: req.user.pincode } } });
+  let professional = null;
+  if (req.user.role === "partner" && ["bio", "experience_years", "city_id"].some((key) => Object.hasOwn(req.body, key))) {
+    professional = await Professional.findOne({ where: { user_id: req.user.id } });
+    if (!professional) throw new ApiError(404, "Partner profile not found.");
+    const professionalUpdates = Object.fromEntries(["bio", "experience_years", "city_id"].filter((key) => Object.hasOwn(req.body, key)).map((key) => [key, req.body[key] || null]));
+    if (professionalUpdates.city_id && !await City.findByPk(professionalUpdates.city_id)) throw new ApiError(404, "Selected city was not found.");
+    await professional.update(professionalUpdates);
+    professional = { id: professional.id, city_id: professional.city_id, bio: professional.bio, experience_years: professional.experience_years, verification_status: professional.verification_status, is_available: professional.is_available };
+  }
+  res.json({ success: true, data: { user: { id: req.user.id, full_name: req.user.full_name, email: req.user.email, role: req.user.role, phone: req.user.phone, address_line: req.user.address_line, city: req.user.city, pincode: req.user.pincode, professional } } });
 }));
 router.put("/me/photo", requireAuth, asyncHandler(async (req, res) => {
-  if (req.user.role !== "customer") throw new ApiError(403, "Customer profile photos are only available for customer accounts.");
   const photo = parseProfilePhoto(req.body?.photo);
   const previous = await CustomerProfilePhoto.findByPk(req.user.id);
   const storedPhoto = await saveProfilePhoto(req.user.id, photo);

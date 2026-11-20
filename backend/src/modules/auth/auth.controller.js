@@ -1,6 +1,6 @@
 import * as authService from "./auth.service.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
-import { CustomerProfilePhoto } from "../../models/index.js";
+import { CustomerProfilePhoto, Professional } from "../../models/index.js";
 import { profilePhotoDataUrl } from "../../utils/profilePhoto.js";
 
 export const signup = asyncHandler(async (req, res) => {
@@ -50,7 +50,10 @@ export const logout = asyncHandler(async (req, res) => {
 });
 
 export const getMe = asyncHandler(async (req, res) => {
-  const photo = await CustomerProfilePhoto.findByPk(req.user.id);
+  const [photo, professional] = await Promise.all([
+    CustomerProfilePhoto.findByPk(req.user.id),
+    req.user.role === "partner" ? Professional.findOne({ where: { user_id: req.user.id }, attributes: ["id", "city_id", "bio", "experience_years", "rating_avg", "rating_count", "verification_status", "is_available"] }) : null,
+  ]);
   res.status(200).json({
     success: true,
     data: { user: {
@@ -58,11 +61,13 @@ export const getMe = asyncHandler(async (req, res) => {
       full_name: req.user.full_name,
       email: req.user.email,
       role: req.user.role,
+      permissions: req.user.role === "employee" ? (req.user.admin_permissions || []) : undefined,
       phone: req.user.phone,
       address_line: req.user.address_line,
       city: req.user.city,
       pincode: req.user.pincode,
       profile_photo: await profilePhotoDataUrl(photo),
+      professional: professional || null,
     } },
   });
 });

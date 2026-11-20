@@ -6,8 +6,10 @@ import {
 } from "lucide-react";
 import { apiRequest, getSession, logoutSession } from "../lib/api";
 
-const emptyProfile = { full_name: "", email: "", phone: "", address_line: "", city: "", pincode: "", profile_photo: null };
+const emptyProfile = { full_name: "", email: "", phone: "", address_line: "", city: "", pincode: "", profile_photo: null, role: "customer", professional: null };
 const EDITABLE = ["full_name", "phone", "address_line", "city", "pincode"];
+const PARTNER_EDITABLE = ["bio", "experience_years"];
+const ROLE_LABEL = { customer: "Customer", partner: "Service partner", employee: "Team member", admin: "Owner" };
 
 const FIELDS = {
   personal: [
@@ -35,7 +37,7 @@ async function compressPhoto(file) {
   return canvas.toDataURL("image/jpeg", 0.82);
 }
 
-const pick = (p) => Object.fromEntries(EDITABLE.map((k) => [k, p[k] || ""]));
+const pick = (p) => ({ ...Object.fromEntries(EDITABLE.map((k) => [k, p[k] || ""])), bio: p.professional?.bio || "", experience_years: String(p.professional?.experience_years ?? "") });
 const statusKey = (b) => String(b.status || "").toLowerCase();
 const isCancelled = (b) => statusKey(b).includes("cancel");
 const isDone = (b) => statusKey(b).includes("complet");
@@ -71,7 +73,7 @@ export default function Account() {
     if (!session.token) { navigate("/login", { replace: true }); return; }
     Promise.all([
       apiRequest("/auth/me", { token: session.token }),
-      apiRequest("/bookings/me", { token: session.token }),
+      session.user?.role === "customer" ? apiRequest("/bookings/me", { token: session.token }) : Promise.resolve([]),
     ]).then(([me, items]) => {
       const next = { ...emptyProfile, ...me.user };
       setProfile(next);
@@ -88,14 +90,14 @@ export default function Account() {
 
   const logout = () => { logoutSession(); navigate("/"); };
   const setField = (event) => { setJustSaved(false); setProfile((current) => ({ ...current, [event.target.name]: event.target.value })); };
-  const dirty = EDITABLE.some((k) => (profile[k] || "") !== savedSnapshot[k]);
-  const resetForm = () => { setProfile((current) => ({ ...current, ...savedSnapshot })); setProfileError(""); };
+  const dirty = [...EDITABLE.map((k) => [k, profile[k] || ""]), ...PARTNER_EDITABLE.map((k) => [k, k === "bio" ? (profile.professional?.bio || "") : String(profile.professional?.experience_years ?? "")])].some(([key, value]) => value !== savedSnapshot[key]);
+  const resetForm = () => { setProfile((current) => ({ ...current, ...Object.fromEntries(EDITABLE.map((key) => [key, savedSnapshot[key]])), professional: current.role === "partner" ? { ...current.professional, bio: savedSnapshot.bio, experience_years: savedSnapshot.experience_years } : current.professional })); setProfileError(""); };
 
   const saveProfile = async (event) => {
     event.preventDefault();
     setSaving(true); setProfileError(""); setJustSaved(false);
     try {
-      const result = await apiRequest("/auth/me", { token: session.token, method: "PATCH", body: JSON.stringify(profile) });
+      const result = await apiRequest("/auth/me", { token: session.token, method: "PATCH", body: JSON.stringify({ ...profile, bio: profile.professional?.bio, experience_years: profile.professional?.experience_years }) });
       const next = { ...profile, ...result.user };
       setProfile(next);
       setSavedSnapshot(pick(next));
@@ -142,7 +144,10 @@ export default function Account() {
   const filtered = sortedBookings.filter((b) => filter === "all" || (filter === "upcoming" && isUpcoming(b)) || (filter === "completed" && isDone(b)) || (filter === "cancelled" && isCancelled(b)));
   const visible = showAll ? filtered : filtered.slice(0, 5);
 
-  const displayName = profile.full_name || session.user?.full_name || "Customer";
+  const displayName = profile.full_name || session.user?.full_name || "Account";
+  const isCustomer = profile.role === "customer";
+  const isPartner = profile.role === "partner";
+  const isEmployee = profile.role === "employee";
   const firstName = displayName.trim().split(" ")[0];
   const initial = displayName.trim().charAt(0).toUpperCase() || "?";
 
@@ -169,7 +174,7 @@ export default function Account() {
           <div className="text-white">
             <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-violet-100 ring-1 ring-white/20 backdrop-blur"><Sparkles size={13} /> Manyata account</p>
             <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">Welcome back, {firstName}</h1>
-            <p className="mt-2 max-w-md text-sm text-violet-100/90">Manage your profile and keep track of every service request in one place.</p>
+            <p className="mt-2 max-w-md text-sm text-violet-100/90">Manage your {ROLE_LABEL[profile.role] || "account"} profile and keep your details up to date.</p>
           </div>
           <button onClick={logout} className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20"><LogOut size={16} /> Log out</button>
         </div>
@@ -192,6 +197,7 @@ export default function Account() {
 
             <h2 className="mt-4 text-xl font-extrabold text-slate-900">{displayName}</h2>
             <p className="mt-0.5 max-w-full truncate text-sm text-slate-500">{profile.email}</p>
+            <span className="mt-2 rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700">{ROLE_LABEL[profile.role] || "Account"}</span>
 
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               <button type="button" disabled={photoBusy} onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-lg bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700 transition hover:bg-violet-100 disabled:opacity-60"><Camera size={13} /> {photoBusy ? "Uploading..." : profile.profile_photo ? "Change photo" : "Upload photo"}</button>
@@ -208,25 +214,26 @@ export default function Account() {
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
               <div className={`h-full rounded-full transition-all duration-500 ${completeness === 100 ? "bg-emerald-500" : "bg-gradient-to-r from-violet-500 to-indigo-500"}`} style={{ width: `${completeness}%` }} />
             </div>
-            <p className="mt-2 text-[11px] text-slate-500">{completeness === 100 ? "Your profile is complete." : "Add your photo, phone and address for faster bookings."}</p>
+            <p className="mt-2 text-[11px] text-slate-500">{completeness === 100 ? "Your profile is complete." : "Add a photo and contact details to complete your profile."}</p>
           </div>
 
-          <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+          {isCustomer && <div className="mt-4 grid grid-cols-3 gap-2 text-center">
             {[["Total", counts.all], ["Upcoming", counts.upcoming], ["Done", counts.completed]].map(([label, value]) => (
               <div key={label} className="rounded-xl border border-slate-100 bg-white p-3">
                 <p className="text-xl font-black text-slate-900">{value}</p>
                 <p className="text-[11px] font-semibold text-slate-500">{label}</p>
               </div>
             ))}
-          </div>
+          </div>}
 
-          <Link to="/" className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-violet-600/25 transition hover:-translate-y-0.5">Book a service <ArrowRight size={16} /></Link>
+          {isCustomer && <Link to="/" className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-violet-600/25 transition hover:-translate-y-0.5">Book a service <ArrowRight size={16} /></Link>}
+          {isEmployee && <div className="mt-5 rounded-xl border border-violet-100 bg-violet-50 p-4"><p className="text-xs font-bold uppercase tracking-wide text-violet-800">Owner-granted access</p><div className="mt-2 flex flex-wrap gap-1.5">{(profile.permissions || []).length ? profile.permissions.map((permission) => <span key={permission} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold capitalize text-violet-700">{permission.replaceAll("-", " ")}</span>) : <span className="text-xs text-slate-600">No admin sections assigned</span>}</div></div>}
         </aside>
 
         {/* Main panel */}
         <div className="min-w-0 space-y-5">
           <div className="inline-flex w-full rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:w-auto">
-            {[["profile", "Profile details", User, null], ["bookings", "My bookings", CalendarDays, counts.all]].map(([key, label, Icon, badge]) => (
+            {[["profile", "Profile details", User, null], ...(isCustomer ? [["bookings", "My bookings", CalendarDays, counts.all]] : [])].map(([key, label, Icon, badge]) => (
               <button key={key} onClick={() => setTab(key)} className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition sm:flex-none ${tab === key ? "bg-slate-900 text-white shadow-md" : "text-slate-600 hover:bg-slate-100"}`}>
                 <Icon size={16} /> {label}
                 {badge !== null && <span className={`rounded-full px-2 py-0.5 text-[11px] ${tab === key ? "bg-white/20" : "bg-slate-100"}`}>{badge}</span>}
@@ -248,13 +255,22 @@ export default function Account() {
                   <div className="grid gap-4 sm:grid-cols-2">{FIELDS.personal.map(renderField)}</div>
                 </div>
 
-                <div className="border-t border-slate-100 pt-8">
+                {isPartner && <div className="border-t border-slate-100 pt-8">
+                  <div className="mb-4 flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><Building2 size={17} /></span><div><h3 className="font-extrabold text-slate-900">Partner profile</h3><p className="text-xs text-slate-500">Share your experience and introduction with customers.</p></div></div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label><span className="mb-1.5 block text-sm font-semibold text-slate-700">Years of experience</span><input name="experience_years" type="number" min="0" max="60" value={profile.professional?.experience_years ?? 0} onChange={(event) => setProfile((current) => ({ ...current, professional: { ...current.professional, experience_years: event.target.value } }))} className={inputBase.replace("pl-11", "pl-4")} /></label>
+                    <div className="rounded-xl bg-slate-50 p-3"><span className="text-xs font-bold uppercase tracking-wide text-slate-500">Verification</span><p className="mt-2 text-sm font-bold capitalize text-slate-800">{profile.professional?.verification_status || "Pending"}</p></div>
+                    <label className="sm:col-span-2"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Professional bio</span><textarea name="bio" maxLength="5000" rows="5" value={profile.professional?.bio || ""} onChange={(event) => setProfile((current) => ({ ...current, professional: { ...current.professional, bio: event.target.value } }))} placeholder="Describe your services and experience" className="w-full rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm outline-none transition focus:border-violet-500 focus:bg-white focus:ring-4 focus:ring-violet-500/10" /></label>
+                  </div>
+                </div>}
+
+                {(isCustomer || isPartner) && <div className="border-t border-slate-100 pt-8">
                   <div className="mb-4 flex items-center gap-3">
                     <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50 text-indigo-700"><MapPin size={17} /></span>
                     <div><h3 className="font-extrabold text-slate-900">Service address</h3><p className="text-xs text-slate-500">Where our professionals will visit.</p></div>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">{FIELDS.address.map(renderField)}</div>
-                </div>
+                </div>}
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/70 px-6 py-4 sm:px-8">

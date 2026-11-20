@@ -1,7 +1,7 @@
 import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
 import {
   BadgeCheck, BriefcaseBusiness, CalendarDays, ClipboardList,
-  Home, LayoutDashboard, LogOut, Mail, MapPinned, MessageSquareText, ShieldCheck, Users,
+  Home, LayoutDashboard, LogOut, Mail, MapPinned, MessageSquareText, ShieldCheck, Users, UserRound, ContactRound,
 } from "lucide-react";
 import { getSession, logoutSession } from "../../lib/api";
 
@@ -25,9 +25,16 @@ const groups = [
   ]},
 ];
 
+const ownerItems = [
+  { label: "Owner tools", items: [["profiles", "All profiles", ContactRound], ["team", "Team access", UserRound]] },
+];
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const session = getSession();
+  const isOwner = session.user?.role === "admin";
+  const permissions = new Set(session.user?.permissions || []);
+  const visibleGroups = groups.map((group) => ({ ...group, items: group.items.filter(([path]) => isOwner || permissions.has(path)) })).filter((group) => group.items.length);
   const logout = async () => {
     await logoutSession();
     navigate("/admin/login", { replace: true });
@@ -55,7 +62,7 @@ export default function AdminDashboard() {
           </Link>
 
           <nav className="admin-nav-scroll mt-5 flex gap-4 overflow-x-auto pb-1 lg:mt-4 lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-2 lg:overflow-y-auto lg:overflow-x-hidden lg:pb-3 lg:pr-1">
-            {groups.map((g) => (
+            {[...visibleGroups, ...(isOwner ? ownerItems : [])].map((g) => (
               <div key={g.label} className="flex gap-1 lg:flex-col">
                 <p className="mb-1 hidden px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 lg:block">{g.label}</p>
                 {g.items.map(([path, label, Icon]) => (
@@ -82,12 +89,16 @@ export default function AdminDashboard() {
             <span className="flex-1">Go to home page</span>
           </Link>
 
+          <Link to="/account" className="group relative z-10 mt-2 flex shrink-0 items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white">
+            <Users size={18} className="transition group-hover:scale-110" /><span>My profile</span>
+          </Link>
+
           <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur lg:mt-4">
             <div className="flex min-w-0 items-center gap-3">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-extrabold ring-2 ring-white/20">{initial}</span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold">{session.user?.full_name || "Owner"}</p>
-                <p className="flex items-center gap-1.5 text-xs text-slate-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />Administrator</p>
+                <p className="flex items-center gap-1.5 text-xs capitalize text-slate-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />{isOwner ? "Owner" : "Team member"}</p>
               </div>
             </div>
             <button onClick={logout} title="Log out" className="inline-flex shrink-0 items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-semibold text-slate-300 transition hover:bg-rose-500/15 hover:text-rose-300">

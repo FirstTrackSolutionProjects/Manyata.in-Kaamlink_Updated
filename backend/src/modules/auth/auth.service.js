@@ -9,7 +9,7 @@ import { sendPasswordResetEmail } from "../../utils/mailer.js";
 const hashToken = (token) => createHash("sha256").update(token).digest("hex");
 
 export async function requestPasswordReset(email) {
-  const user = await User.findOne({ where: { email: email.trim().toLowerCase(), role: "customer", is_active: true, deleted_at: null } });
+  const user = await User.findOne({ where: { email: email.trim().toLowerCase(), is_active: true, deleted_at: null } });
   if (!user) return;
 
   const token = randomBytes(32).toString("base64url");
@@ -25,7 +25,7 @@ export async function requestPasswordReset(email) {
 
 export async function resetPassword({ token, password }) {
   const user = await User.findOne({
-    where: { password_reset_token_hash: hashToken(token), role: "customer", is_active: true, deleted_at: null },
+    where: { password_reset_token_hash: hashToken(token), is_active: true, deleted_at: null },
   });
   if (!user || !user.password_reset_expires_at || new Date(user.password_reset_expires_at).getTime() <= Date.now()) {
     throw new ApiError(400, "This reset link is invalid or expired. Request a new one.");
@@ -123,6 +123,7 @@ async function generateAuthResponse(user) {
       full_name: user.full_name,
       email: user.email,
       role: user.role,
+      permissions: user.role === "employee" ? (user.admin_permissions || []) : undefined,
     },
     accessToken,
     refreshToken,
