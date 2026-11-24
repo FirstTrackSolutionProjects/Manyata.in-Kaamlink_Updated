@@ -203,7 +203,7 @@ router.patch("/customers/:id", [
   if (customer.deleted_at) throw new ApiError(409, "Restore this customer before editing the profile.");
   const keys = ["full_name", "email", "phone", "address_line", "city", "pincode", "is_active"];
   const updates = Object.fromEntries(keys.filter((key) => Object.hasOwn(req.body, key)).map((key) => [key, req.body[key] === "" ? null : req.body[key]]));
-  for (const key of ["email", "phone"]) {
+  for (const key of ["email"]) {
     if (!updates[key] || updates[key] === customer[key]) continue;
     if (await User.findOne({ where: { [key]: updates[key], id: { [Op.ne]: customer.id } } })) throw new ApiError(409, `That ${key} is already used by another account.`);
   }
@@ -292,7 +292,7 @@ router.patch("/professionals/:id", [
   const updates = {};
   const userUpdates = {};
   for (const key of ["full_name", "email", "phone"]) if (Object.hasOwn(req.body, key)) userUpdates[key] = req.body[key] || null;
-  for (const key of ["email", "phone"]) {
+  for (const key of ["email"]) {
     if (!userUpdates[key] || userUpdates[key] === professional.user[key]) continue;
     if (await User.findOne({ where: { [key]: userUpdates[key], id: { [Op.ne]: professional.user.id } }, transaction })) {
       throw new ApiError(409, `That ${key} is already used by another account.`);
@@ -656,10 +656,6 @@ router.patch("/team/:id", [
   if (!employee) throw new ApiError(404, "Employee account not found.");
   const updates = {};
   for (const key of ["full_name", "phone", "is_active"]) if (Object.hasOwn(req.body, key)) updates[key] = req.body[key];
-  if (updates.phone) {
-    const duplicate = await User.findOne({ where: { phone: updates.phone, id: { [Op.ne]: employee.id } } });
-    if (duplicate) throw new ApiError(409, "That phone number is already used by another account.");
-  }
   if (Object.hasOwn(req.body, "permissions")) updates.admin_permissions = [...new Set(req.body.permissions)];
   if (req.body.password) updates.password_hash = await bcrypt.hash(req.body.password, 12);
   await employee.update(updates);

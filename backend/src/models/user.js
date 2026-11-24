@@ -22,7 +22,6 @@ export default (sequelize) => {
       phone: {
         type: DataTypes.STRING(15),
         allowNull: true,
-        unique: true,
       },
       password_hash: {
         type: DataTypes.STRING(255),

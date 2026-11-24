@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { Op } from "sequelize";
 import { body } from "express-validator";
 import rateLimit from "express-rate-limit";
 import * as authController from "./auth.controller.js";
@@ -55,10 +54,6 @@ router.patch("/me", requireAuth, [
 ], validate, asyncHandler(async (req, res) => {
   const keys = ["full_name", "phone", "address_line", "city", "pincode"];
   const updates = Object.fromEntries(keys.filter((key) => Object.hasOwn(req.body, key)).map((key) => [key, req.body[key] || null]));
-  if (updates.phone) {
-    const duplicate = await User.findOne({ where: { phone: updates.phone, id: { [Op.ne]: req.user.id } } });
-    if (duplicate) throw new ApiError(409, "That phone number is already used by another account.");
-  }
   await req.user.update(updates);
   let professional = null;
   if (req.user.role === "partner" && ["bio", "experience_years", "city_id"].some((key) => Object.hasOwn(req.body, key))) {
