@@ -28,10 +28,20 @@ if (!process.env.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_SECRET.length < 3
   throw new Error("Set JWT_REFRESH_SECRET to a separate private random value of at least 32 characters.");
 }
 
-const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
-  .split(",")
+// Accept both the explicit CORS allowlist and the configured frontend URL.
+// Hostinger deployments commonly set FRONTEND_URL but omit CORS_ORIGINS; in
+// that case browser requests with Authorization headers (such as team creation)
+// fail their CORS preflight even though simpler same-origin requests work.
+const allowedOrigins = [...new Set([
+  ...(process.env.CORS_ORIGINS || "http://localhost:5173").split(","),
+  process.env.FRONTEND_URL || "",
+])
   .map((origin) => origin.trim())
-  .filter(Boolean);
+  .filter(Boolean)
+  .map((origin) => {
+    try { return new URL(origin).origin; }
+    catch { return origin.replace(/\/$/, ""); }
+  })];
 
 app.use(cors({
   origin(origin, callback) {
