@@ -32,16 +32,17 @@ if (!process.env.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_SECRET.length < 3
 // Hostinger deployments commonly set FRONTEND_URL but omit CORS_ORIGINS; in
 // that case browser requests with Authorization headers (such as team creation)
 // fail their CORS preflight even though simpler same-origin requests work.
-const allowedOrigins = [...new Set([
+const configuredOrigins = [
   ...(process.env.CORS_ORIGINS || "http://localhost:5173").split(","),
   process.env.FRONTEND_URL || "",
-])
+];
+const allowedOrigins = [...new Set(configuredOrigins
   .map((origin) => origin.trim())
   .filter(Boolean)
   .map((origin) => {
     try { return new URL(origin).origin; }
     catch { return origin.replace(/\/$/, ""); }
-  })];
+  }))];
 
 app.use(cors({
   origin(origin, callback) {
