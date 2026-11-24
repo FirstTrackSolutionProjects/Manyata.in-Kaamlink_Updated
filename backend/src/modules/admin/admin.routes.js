@@ -627,6 +627,9 @@ router.post("/team", [
 ], validate, asyncHandler(async (req, res) => {
   const email = req.body.email.toLowerCase();
   if (await User.findOne({ where: { email } })) throw new ApiError(409, "An account with this email already exists.");
+  if (req.body.phone?.trim() && await User.findOne({ where: { phone: req.body.phone.trim() } })) {
+    throw new ApiError(409, "That phone number is already used by another account. Leave the phone field blank or use a different number.");
+  }
   const user = await User.create({
     full_name: req.body.full_name,
     email,
