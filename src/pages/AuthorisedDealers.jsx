@@ -626,12 +626,11 @@ export default function AuthorisedDealers() {
             </div>
 
             <h2 className="mt-6 text-2xl font-black text-white sm:text-4xl">
-              Become a Manyata Paint Dealer
+              Manyata Enterprises is an Authorised Dealer of Asian Paints
             </h2>
 
             <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-slate-300 sm:text-base">
-              Interested in joining the Manyata dealer network?
-              Contact our team to discuss business opportunities.
+              Soro, Balasore, Odisha
             </p>
 
             <Link
