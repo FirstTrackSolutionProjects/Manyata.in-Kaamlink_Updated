@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  BadgeCheck, BriefcaseBusiness, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, EyeOff, LayoutGrid,
-  List as ListIcon, Mail, MapPin, Pencil, Phone, Plus, RefreshCw, RotateCcw, Search, SlidersHorizontal, Trash2, UserCheck, UserPlus, Users, X,
+  BadgeCheck, BriefcaseBusiness, Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, EyeOff, ImagePlus, LayoutGrid,
+  List as ListIcon, Loader2, Mail, MapPin, Pencil, Phone, Plus, RefreshCw, RotateCcw, Search, SlidersHorizontal, Trash2, UserCheck, UserPlus, Users, X,
 } from "lucide-react";
+import { apiRequest, getSession } from "../../lib/api";
 import AdminPageFrame from "./AdminPageFrame";
 import useAdminSection from "./useAdminSection";
 import { Badge, EmptyState, Field, StatStrip, Toggle, inputCls } from "./AdminUI";
@@ -62,6 +63,19 @@ function genPassword() {
   return Array.from(arr, (n) => chars[n % chars.length]).join("");
 }
 
+async function compressPhoto(file) {
+  if (!file.type.startsWith("image/")) throw new Error("Choose an image file.");
+  if (file.size > 12 * 1024 * 1024) throw new Error("Choose a photo smaller than 12 MB.");
+  const image = await createImageBitmap(file);
+  const scale = Math.min(1, 640 / Math.max(image.width, image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+  image.close();
+  return canvas.toDataURL("image/jpeg", 0.82);
+}
+
 function Labeled({ label, children, className = "" }) {
   return (
     <div className={className}>
@@ -71,10 +85,26 @@ function Labeled({ label, children, className = "" }) {
   );
 }
 
-function Avatar({ name, size = "h-12 w-12 text-base" }) {
+function Avatar({ name, userId, photoAvailable, size = "h-12 w-12 text-base" }) {
+  const host = useRef(null);
+  const [photo, setPhoto] = useState(null);
+  useEffect(() => {
+    if (!photoAvailable || !userId || !host.current) return undefined;
+    let active = true;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      observer.disconnect();
+      const { token } = getSession();
+      apiRequest(`/admin/profiles/${userId}/photo`, { token })
+        .then((result) => { if (active) setPhoto(result.profile_photo || null); })
+        .catch(() => {});
+    }, { rootMargin: "120px" });
+    observer.observe(host.current);
+    return () => { active = false; observer.disconnect(); };
+  }, [photoAvailable, userId]);
   return (
-    <span className={`grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 font-extrabold text-white shadow-md ring-2 ring-white ${size}`}>
-      {(name || "?").charAt(0).toUpperCase()}
+    <span ref={host} className={`grid shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 font-extrabold text-white shadow-md ring-2 ring-white ${size}`}>
+      {photo ? <img src={photo} alt={`${name || "Partner"} profile`} className="h-full w-full object-cover" /> : (name || "?").charAt(0).toUpperCase()}
     </span>
   );
 }
@@ -284,6 +314,11 @@ function ProfessionalsView({ data = {}, mutate }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [photoOverrides, setPhotoOverrides] = useState({});
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoError, setPhotoError] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [query, setQuery] = useState("");
   const [view, setView] = useState("grid");
@@ -293,16 +328,18 @@ function ProfessionalsView({ data = {}, mutate }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(9);
   const resultsRef = useRef(null);
+  const photoInputRef = useRef(null);
 
   const setF = (patch) => {
     setFilters((f) => ({ ...f, ...patch }));
     setPage(1);
   };
-  const closeModal = () => { setModalOpen(false); setShowPw(false); setEditing(null); };
+  const closeModal = () => { if (photoBusy) return; setModalOpen(false); setShowPw(false); setEditing(null); setProfilePhoto(null); setPhotoError(""); };
 
-  const openCreate = () => { setEditing(null); setDraft(EMPTY_DRAFT); setShowPw(false); setModalOpen(true); };
-  const openEdit = (row) => {
+  const openCreate = () => { setEditing(null); setDraft(EMPTY_DRAFT); setProfilePhoto(null); setPhotoError(""); setShowPw(false); setModalOpen(true); };
+  const openEdit = async (row) => {
     setEditing(row);
+    setProfilePhoto(null); setPhotoError(""); setPhotoLoading(true);
     setDraft({
       full_name: row.user?.full_name || "", email: row.user?.email || "", phone: row.user?.phone || "",
       password: "", city_id: row.city_id ? String(row.city_id) : "", experience_years: String(row.experience_years ?? 0),
@@ -310,6 +347,37 @@ function ProfessionalsView({ data = {}, mutate }) {
     });
     setShowPw(false);
     setModalOpen(true);
+    try {
+      const { token } = getSession();
+      const result = await apiRequest(`/admin/profiles/${row.user?.id}/photo`, { token });
+      setProfilePhoto(result.profile_photo || null);
+    } catch { setProfilePhoto(null); }
+    finally { setPhotoLoading(false); }
+  };
+
+  const uploadPhoto = async (file) => {
+    if (!editing?.user?.id || !file) return;
+    setPhotoBusy(true); setPhotoError("");
+    try {
+      const photo = await compressPhoto(file);
+      const { token } = getSession();
+      const result = await apiRequest(`/admin/profiles/${editing.user.id}/photo`, { token, method: "PUT", body: JSON.stringify({ photo }) });
+      setProfilePhoto(result.profile_photo || photo);
+      setPhotoOverrides((current) => ({ ...current, [editing.user.id]: true }));
+    } catch (error) { setPhotoError(error.message || "Could not update this profile photo."); }
+    finally { setPhotoBusy(false); }
+  };
+
+  const removePhoto = async () => {
+    if (!editing?.user?.id) return;
+    setPhotoBusy(true); setPhotoError("");
+    try {
+      const { token } = getSession();
+      await apiRequest(`/admin/profiles/${editing.user.id}/photo`, { token, method: "DELETE" });
+      setProfilePhoto(null);
+      setPhotoOverrides((current) => ({ ...current, [editing.user.id]: false }));
+    } catch (error) { setPhotoError(error.message || "Could not remove this profile photo."); }
+    finally { setPhotoBusy(false); }
   };
 
   const submit = async (event) => {
@@ -500,7 +568,7 @@ function ProfessionalsView({ data = {}, mutate }) {
                 <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 to-fuchsia-500 opacity-0 transition-opacity group-hover:opacity-100" />
 
                 <div className="flex items-start gap-3">
-                  <Avatar name={row.user?.full_name} />
+                  <Avatar name={row.user?.full_name} userId={row.user?.id} photoAvailable={photoOverrides[row.user?.id] ?? row.user?.profile_photo_available} />
                   <div className="min-w-0 flex-1">
                     <h3 className="truncate text-base font-extrabold text-slate-900">{row.user?.full_name || "—"}</h3>
                     <p className="flex items-center gap-1.5 truncate text-xs text-slate-400"><Mail size={12} className="shrink-0" />{row.user?.email}</p>
@@ -551,7 +619,7 @@ function ProfessionalsView({ data = {}, mutate }) {
                     <tr key={row.id} className={`transition hover:bg-violet-50/40 ${active ? "" : "bg-slate-50/70"}`}>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
-                          <Avatar name={row.user?.full_name} size="h-10 w-10 text-sm" />
+                          <Avatar name={row.user?.full_name} userId={row.user?.id} photoAvailable={photoOverrides[row.user?.id] ?? row.user?.profile_photo_available} size="h-10 w-10 text-sm" />
                           <div className="min-w-0">
                             <p className="truncate font-bold text-slate-900">{row.user?.full_name || "—"}</p>
                             <p className="truncate text-xs text-slate-400">{row.user?.email}</p>
@@ -601,6 +669,23 @@ function ProfessionalsView({ data = {}, mutate }) {
       <Modal open={modalOpen} onClose={closeModal} icon={editing ? Pencil : UserPlus} title={editing ? "Edit partner" : "Onboard a partner"} subtitle={editing ? "Update the partner profile, login, city and skills." : "New accounts start pending and unavailable until approved."} wide>
         <form onSubmit={submit}>
           <div className="grid gap-4 p-6 sm:grid-cols-2">
+            {editing && <div className="sm:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-2xl font-extrabold text-white shadow-md ring-4 ring-white">
+                  {photoLoading ? <Loader2 size={22} className="animate-spin" /> : profilePhoto ? <img src={profilePhoto} alt={`${editing.user?.full_name || "Partner"} profile`} className="h-full w-full object-cover" /> : (editing.user?.full_name || "?").charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <b className="block text-sm text-slate-800">Partner profile photo</b>
+                  <p className="mt-1 text-xs text-slate-500">JPG, PNG or WebP. The image is resized before upload.</p>
+                  <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) uploadPhoto(file); }} />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" onClick={() => photoInputRef.current?.click()} disabled={photoBusy || photoLoading} className={btn.ghost}>{photoBusy ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />} {profilePhoto ? "Change photo" : "Upload photo"}</button>
+                    {profilePhoto && <button type="button" onClick={removePhoto} disabled={photoBusy} className={btn.danger}><Camera size={14} /> Remove photo</button>}
+                  </div>
+                </div>
+              </div>
+              {photoError && <p role="alert" className="mt-3 rounded-lg bg-rose-50 p-2.5 text-xs font-semibold text-rose-700">{photoError}</p>}
+            </div>}
             <Field label="Full name"><input required maxLength="120" placeholder="Full name" value={draft.full_name} onChange={(e) => setDraft({ ...draft, full_name: e.target.value })} className={inputCls} /></Field>
             <Field label="Email"><input required type="email" placeholder="name@example.com" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} className={inputCls} /></Field>
             <Field label="Phone"><input placeholder="Phone number" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} className={inputCls} /></Field>
@@ -653,8 +738,8 @@ function ProfessionalsView({ data = {}, mutate }) {
           </div>
 
           <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4">
-            <button type="button" onClick={closeModal} className={cancelBtn}>Cancel</button>
-            <button className={btn.primary}>{editing ? <Pencil size={16} /> : <Plus size={16} />}{editing ? "Save changes" : "Create partner account"}</button>
+            <button type="button" onClick={closeModal} disabled={photoBusy} className={cancelBtn}>Cancel</button>
+            <button disabled={photoBusy} className={btn.primary}>{photoBusy ? <Loader2 size={16} className="animate-spin" /> : editing ? <Pencil size={16} /> : <Plus size={16} />}{editing ? "Save changes" : "Create partner account"}</button>
           </div>
         </form>
       </Modal>
