@@ -238,7 +238,18 @@ router.get("/professionals", asyncHandler(async (_req, res) => {
       { model: ServiceCategory, as: "categories", attributes: ["id", "name"], through: { attributes: [] } },
     ],
   }), ServiceCategory.findAll({ where: { is_active: true }, attributes: ["id", "name"] }), City.findAll({ where: { is_active: true }, attributes: ["id", "name", "state"] })]);
-  res.json({ success: true, data: { professionals, categories, cities } });
+  const userIds = professionals.map(({ user_id }) => user_id);
+  const photos = userIds.length ? await CustomerProfilePhoto.findAll({ where: { user_id: userIds }, attributes: ["user_id"] }) : [];
+  const photoUserIds = new Set(photos.map(({ user_id }) => String(user_id)));
+  res.json({ success: true, data: {
+    professionals: professionals.map((professional) => {
+      const item = professional.toJSON();
+      if (item.user) item.user.profile_photo_available = photoUserIds.has(String(item.user.id));
+      return item;
+    }),
+    categories,
+    cities,
+  } });
 }));
 
 router.post("/professionals", [
