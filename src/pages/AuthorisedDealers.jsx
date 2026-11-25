@@ -76,7 +76,7 @@ const PRODUCTS = [
 // ============================================
 
 const DEALER = {
-  name: "Manyata Authorised Paint Dealer",
+  name: "Manyata Enterprises is an Authorised Dealer",
   company: "Manyata Paints",
   contactPerson: "Dealer Representative",
   city: "Soro",
@@ -405,7 +405,7 @@ export default function AuthorisedDealers() {
             </span>
 
             <h2 className="mt-4 text-3xl font-black text-slate-900 sm:text-4xl">
-              Authorised Paint Dealer
+              Manyata Enterprises is an Authorised Paint Dealer
             </h2>
 
             <p className="mt-4 text-sm text-slate-500 sm:text-base">
