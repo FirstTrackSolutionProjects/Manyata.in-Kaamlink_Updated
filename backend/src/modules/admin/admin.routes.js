@@ -23,7 +23,8 @@ import { ADMIN_PERMISSION_KEYS, ADMIN_SECTIONS, requireAdminConsole } from "./ad
 import { validate } from "../../middleware/validate.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiError } from "../../utils/ApiError.js";
-import { profilePhotoDataUrl } from "../../utils/profilePhoto.js";
+import { parseProfilePhoto, profilePhotoDataUrl } from "../../utils/profilePhoto.js";
+import { removeProfilePhotoObject, saveProfilePhoto } from "../../utils/profilePhotoStorage.js";
 
 const router = Router();
 const bookingStatuses = ["pending", "confirmed", "assigned", "in_progress", "completed", "cancelled", "refunded"];
@@ -582,7 +583,7 @@ router.get("/profiles", [query("search").optional().trim().isLength({ max: 120 }
   });
   const ids = users.map((user) => user.id);
   const [professionals, photos] = ids.length ? await Promise.all([
-    Professional.findAll({ where: { user_id: ids }, attributes: ["id", "user_id", "city_id", "bio", "experience_years", "rating_avg", "rating_count", "verification_status", "is_available"] }),
+    Professional.findAll({ where: { user_id: ids }, attributes: ["id", "user_id", "city_id", "bio", "experience_years", "rating_avg", "rating_count", "verification_status", "is_available"], include: [{ model: ServiceCategory, as: "categories", attributes: ["id", "name"], through: { attributes: [] } }] }),
     CustomerProfilePhoto.findAll({ where: { user_id: ids }, attributes: ["user_id"] }),
   ]) : [[], []];
   const cityIds = [...new Set(professionals.map(({ city_id }) => city_id).filter(Boolean))];
@@ -599,6 +600,108 @@ router.get("/profiles", [query("search").optional().trim().isLength({ max: 120 }
     } : null,
     account_status: user.deleted_at ? "deleted" : user.is_active ? "active" : "suspended",
   })) });
+}));
+
+// Owner-only full profile editor. Role is deliberately immutable here; partner and employee
+// fields are updated with their related records in one transaction.
+router.patch("/profiles/:id", [
+  param("id").isInt({ min: 1 }),
+  body("full_name").optional().trim().notEmpty().isLength({ max: 120 }),
+  body("email").optional().trim().isEmail().normalizeEmail(),
+  body("phone").optional({ nullable: true, values: "falsy" }).trim().isLength({ min: 7, max: 15 }),
+  body("address_line").optional({ nullable: true, values: "falsy" }).trim().isLength({ max: 255 }),
+  body("city").optional({ nullable: true, values: "falsy" }).trim().isLength({ max: 100 }),
+  body("pincode").optional({ nullable: true, values: "falsy" }).matches(/^[0-9]{6}$/),
+  body("is_active").optional().isBoolean(),
+  body("is_verified").optional().isBoolean(),
+  body("bio").optional({ nullable: true }).isLength({ max: 10000 }),
+  body("experience_years").optional().isInt({ min: 0, max: 80 }),
+  body("city_id").optional({ nullable: true }).isInt({ min: 1 }),
+  body("category_ids").optional().isArray(),
+  body("verification_status").optional().isIn(professionalStatuses),
+  body("is_available").optional().isBoolean(),
+  body("permissions").optional().isArray({ max: ADMIN_PERMISSION_KEYS.length }),
+  body("permissions.*").optional().isIn(ADMIN_PERMISSION_KEYS),
+  body("password").optional({ values: "falsy" }).isString().isLength({ min: 12, max: 128 }),
+], validate, asyncHandler(async (req, res) => {
+  const transaction = await User.sequelize.transaction();
+  try {
+    const user = await User.findByPk(req.params.id, { transaction });
+    if (!user) throw new ApiError(404, "Profile not found.");
+    if (user.deleted_at) throw new ApiError(409, "Restore this profile before editing it.");
+    if (user.role === "admin" && req.body.is_active === false) throw new ApiError(400, "The owner account cannot be deactivated here.");
+
+    const userUpdates = {};
+    for (const key of ["full_name", "email", "phone", "address_line", "city", "pincode", "is_active", "is_verified"]) {
+      if (Object.hasOwn(req.body, key)) userUpdates[key] = req.body[key] === "" ? null : req.body[key];
+    }
+    if (userUpdates.email && userUpdates.email !== user.email && await User.findOne({ where: { email: userUpdates.email, id: { [Op.ne]: user.id } }, transaction })) {
+      throw new ApiError(409, "That email is already used by another account.");
+    }
+    if (req.body.password) {
+      userUpdates.password_hash = await bcrypt.hash(req.body.password, 12);
+      userUpdates.password_reset_token_hash = null;
+      userUpdates.password_reset_expires_at = null;
+    }
+
+    if (user.role === "employee" && Object.hasOwn(req.body, "permissions")) userUpdates.admin_permissions = [...new Set(req.body.permissions)];
+    await user.update(userUpdates, { transaction });
+
+    if (user.role === "partner") {
+      const professional = await Professional.findOne({ where: { user_id: user.id }, transaction });
+      if (!professional) throw new ApiError(404, "Partner profile not found.");
+      const professionalUpdates = {};
+      for (const key of ["city_id", "bio", "experience_years", "verification_status", "is_available"]) {
+        if (Object.hasOwn(req.body, key)) professionalUpdates[key] = req.body[key] === "" ? null : req.body[key];
+      }
+      if (req.body.city_id && !await City.findByPk(req.body.city_id, { transaction })) throw new ApiError(404, "Selected city was not found.");
+      if (Object.hasOwn(req.body, "is_available") && req.body.is_available && ((req.body.verification_status || professional.verification_status) !== "verified" || req.body.is_active === false)) {
+        throw new ApiError(400, "A partner must be verified and active before becoming available.");
+      }
+      if ((professionalUpdates.verification_status && professionalUpdates.verification_status !== "verified") || req.body.is_active === false) professionalUpdates.is_available = false;
+      await professional.update(professionalUpdates, { transaction });
+      if (Object.hasOwn(req.body, "category_ids")) {
+        const categoryIds = [...new Set(req.body.category_ids.map(Number))];
+        if (categoryIds.length && await ServiceCategory.count({ where: { id: categoryIds }, transaction }) !== categoryIds.length) throw new ApiError(400, "One or more service categories were not found.");
+        await ProfessionalService.destroy({ where: { professional_id: professional.id }, transaction });
+        if (categoryIds.length) await ProfessionalService.bulkCreate(categoryIds.map((category_id) => ({ professional_id: professional.id, category_id })), { transaction });
+      }
+    }
+
+    if (req.body.password || req.body.is_active === false || Object.hasOwn(req.body, "permissions")) {
+      await RefreshToken.update({ revoked: true }, { where: { user_id: user.id, revoked: false }, transaction });
+    }
+    await transaction.commit();
+    res.json({ success: true, data: { id: user.id } });
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+}));
+
+router.put("/profiles/:id/photo", [param("id").isInt({ min: 1 }), body("photo").isString().notEmpty()], validate, asyncHandler(async (req, res) => {
+  const user = await User.findByPk(req.params.id, { attributes: ["id"] });
+  if (!user) throw new ApiError(404, "Profile not found.");
+  const photo = parseProfilePhoto(req.body.photo);
+  const previous = await CustomerProfilePhoto.findByPk(user.id);
+  const storedPhoto = await saveProfilePhoto(user.id, photo);
+  try {
+    await CustomerProfilePhoto.upsert(storedPhoto);
+  } catch (error) {
+    if (storedPhoto.object_key) await removeProfilePhotoObject(storedPhoto.object_key).catch(() => {});
+    throw error;
+  }
+  if (previous?.object_key && previous.object_key !== storedPhoto.object_key) {
+    await removeProfilePhotoObject(previous.object_key).catch((error) => console.error("Unable to remove replaced profile photo from S3:", error.message));
+  }
+  res.json({ success: true, data: { profile_photo: `data:${photo.mime_type};base64,${photo.image_data.toString("base64")}` } });
+}));
+
+router.delete("/profiles/:id/photo", [param("id").isInt({ min: 1 })], validate, asyncHandler(async (req, res) => {
+  const photo = await CustomerProfilePhoto.findByPk(req.params.id);
+  await CustomerProfilePhoto.destroy({ where: { user_id: req.params.id } });
+  if (photo?.object_key) await removeProfilePhotoObject(photo.object_key);
+  res.json({ success: true, data: { profile_photo: null } });
 }));
 
 router.get("/profiles/:id/photo", [param("id").isInt({ min: 1 })], validate, asyncHandler(async (req, res) => {

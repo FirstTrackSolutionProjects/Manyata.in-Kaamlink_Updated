@@ -47,6 +47,24 @@ const selectBase = "flex w-full items-center justify-between gap-2 rounded-xl bo
 const pgBtn = "inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-lg border px-2.5 text-sm font-bold transition";
 const pgIdle = "border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-600";
 const pgOn = "border-slate-900 bg-slate-900 text-white shadow-md";
+const ADMIN_PERMISSION_OPTIONS = [
+  ["overview", "Overview"], ["bookings", "Bookings"], ["services", "Services & categories"],
+  ["professionals", "Partners"], ["service-areas", "Service areas"], ["customers", "Customers"],
+  ["contact", "Contact inbox"], ["tickets", "Support tickets"], ["newsletter", "Newsletter"],
+];
+
+async function compressPhoto(file) {
+  if (!file.type.startsWith("image/")) throw new Error("Choose an image file.");
+  if (file.size > 12 * 1024 * 1024) throw new Error("Choose a photo smaller than 12 MB.");
+  const image = await createImageBitmap(file);
+  const scale = Math.min(1, 640 / Math.max(image.width, image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+  image.close();
+  return canvas.toDataURL("image/jpeg", 0.82);
+}
 
 function pageList(cur, total) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -296,16 +314,12 @@ function ProfileModal({ profile, photo, onClose, onEdit, onRemove, onRestore }) 
         )}
 
         {profile.profile_photo_available && <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-400"><Camera size={13} /> This account has a profile photo.</p>}
-        {profile.role !== "admin" && (
+        {profile.account_status === "deleted" ? (
+          profile.role !== "admin" && <div className="mt-6 flex justify-end border-t border-slate-100 pt-4"><button onClick={() => onRestore(profile)} className={btn.ghost}><RotateCcw size={14} /> Restore account</button></div>
+        ) : (
           <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
-            {profile.account_status === "deleted" ? (
-              <button onClick={() => onRestore(profile)} className={btn.ghost}><RotateCcw size={14} /> Restore account</button>
-            ) : (
-              <>
-                <button onClick={() => onEdit(profile)} className={btn.ghost}><Pencil size={14} /> Edit profile</button>
-                <button onClick={() => onRemove(profile)} className={btn.danger}><Trash2 size={14} /> Remove</button>
-              </>
-            )}
+            <button onClick={() => onEdit(profile)} className={btn.ghost}><Pencil size={14} /> Edit profile</button>
+            {profile.role !== "admin" && <button onClick={() => onRemove(profile)} className={btn.danger}><Trash2 size={14} /> Remove</button>}
           </div>
         )}
       </div>
@@ -313,7 +327,8 @@ function ProfileModal({ profile, photo, onClose, onEdit, onRemove, onRestore }) 
   );
 }
 
-function EditProfileModal({ profile, onClose, onSave, busy, error }) {
+function EditProfileModal({ profile, photo, cities, categories, onClose, onSave, onPhotoUpload, onPhotoRemove, busy, photoBusy, error, photoError }) {
+  const fileRef = useRef(null);
   const [form, setForm] = useState({
     full_name: profile.full_name || "",
     email: profile.email || "",
@@ -322,15 +337,25 @@ function EditProfileModal({ profile, onClose, onSave, busy, error }) {
     city: profile.city || "",
     pincode: profile.pincode || "",
     is_active: Boolean(profile.is_active),
+    is_verified: Boolean(profile.is_verified),
+    city_id: String(profile.professional?.city_id || ""),
+    bio: profile.professional?.bio || "",
+    experience_years: String(profile.professional?.experience_years ?? 0),
+    category_ids: (profile.professional?.categories || []).map((item) => Number(item.id)),
+    verification_status: profile.professional?.verification_status || "pending",
+    is_available: Boolean(profile.professional?.is_available),
+    permissions: profile.admin_permissions || [],
+    password: "",
   });
   const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const employee = profile.role === "employee";
   const partner = profile.role === "partner";
+  const owner = profile.role === "admin";
   const fields = [
     ["full_name", "Full name", "text", true],
-    ...(!employee ? [["email", "Email", "email", true]] : []),
+    ["email", "Email", "email", true],
     ["phone", "Phone", "tel", false],
-    ...(!employee && !partner ? [["address_line", "Address", "text", false], ["city", "City", "text", false], ["pincode", "PIN code", "text", false]] : []),
+    ...(!employee ? [["address_line", "Address", "text", false], ["city", "City", "text", false], ["pincode", "PIN code", "text", false]] : []),
   ];
 
   return (
@@ -341,6 +366,21 @@ function EditProfileModal({ profile, onClose, onSave, busy, error }) {
           <button type="button" onClick={onClose} disabled={busy} aria-label="Close" className="grid h-9 w-9 place-items-center rounded-xl text-slate-500 hover:bg-slate-100"><X size={18} /></button>
         </div>
         <div className="grid gap-4 px-6 py-6 sm:grid-cols-2 sm:px-8">
+          <div className="sm:col-span-2 flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+            <span className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-2xl font-extrabold text-white ring-4 ring-white">
+              {photo ? <img src={photo} alt={`${profile.full_name} profile`} className="h-full w-full object-cover" /> : (form.full_name || "?").charAt(0).toUpperCase()}
+            </span>
+            <div className="min-w-0 flex-1">
+              <b className="block text-sm text-slate-800">Profile photo</b>
+              <p className="mt-1 text-xs text-slate-500">JPEG, PNG or WebP · compressed before upload · max 900 KB</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) onPhotoUpload(file); }} />
+                <button type="button" disabled={photoBusy} onClick={() => fileRef.current?.click()} className={btn.ghost}><Camera size={14} />{photoBusy ? "Uploading…" : photo ? "Change photo" : "Upload photo"}</button>
+                {photo && <button type="button" disabled={photoBusy} onClick={onPhotoRemove} className={btn.danger}><Trash2 size={14} />Remove photo</button>}
+              </div>
+              {photoError && <p role="alert" className="mt-2 text-xs font-semibold text-rose-600">{photoError}</p>}
+            </div>
+          </div>
           {fields.map(([key, label, type, required]) => (
             <label key={key} className={`${labelCls} ${key === "address_line" ? "sm:col-span-2" : ""}`}>
               {label}
@@ -349,15 +389,63 @@ function EditProfileModal({ profile, onClose, onSave, busy, error }) {
                 value={form[key]} onChange={(event) => set(key, event.target.value)} className={`${inputCls} mt-1.5`} />
             </label>
           ))}
+          {partner && <>
+            <label className={labelCls}>Partner city
+              <select value={form.city_id} onChange={(event) => set("city_id", event.target.value)} className={`${inputCls} mt-1.5`}>
+                <option value="">No city assigned</option>{cities.map((city) => <option key={city.id} value={city.id}>{city.name}{city.state ? `, ${city.state}` : ""}</option>)}
+              </select>
+            </label>
+            <label className={labelCls}>Years of experience
+              <input type="number" min="0" max="80" value={form.experience_years} onChange={(event) => set("experience_years", event.target.value)} className={`${inputCls} mt-1.5`} />
+            </label>
+            <label className={`${labelCls} sm:col-span-2`}>Partner bio
+              <textarea rows="4" maxLength="10000" value={form.bio} onChange={(event) => set("bio", event.target.value)} className={`${inputCls} mt-1.5`} />
+            </label>
+            <div className="sm:col-span-2">
+              <span className={labelCls}>Services / skills</span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {categories.map((category) => {
+                  const checked = form.category_ids.includes(Number(category.id));
+                  return <button key={category.id} type="button" onClick={() => set("category_ids", checked ? form.category_ids.filter((id) => id !== Number(category.id)) : [...form.category_ids, Number(category.id)])} className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${checked ? "border-violet-600 bg-violet-600 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-violet-300"}`}>{checked ? "✓ " : ""}{category.name}</button>;
+                })}
+                {!categories.length && <p className="text-xs text-slate-500">No active service categories available.</p>}
+              </div>
+            </div>
+            <label className={labelCls}>Verification status
+              <select value={form.verification_status} onChange={(event) => { set("verification_status", event.target.value); if (event.target.value !== "verified") set("is_available", false); }} className={`${inputCls} mt-1.5`}>
+                <option value="pending">Pending</option><option value="verified">Verified</option><option value="rejected">Rejected</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-3 self-end rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+              <input type="checkbox" checked={form.is_available} disabled={form.verification_status !== "verified" || !form.is_active} onChange={(event) => set("is_available", event.target.checked)} className="h-4 w-4 accent-violet-600" />
+              <span><b className="block text-sm text-slate-800">Available for jobs</b><small className="text-xs text-slate-500">Requires verified and active account.</small></span>
+            </label>
+          </>}
+          {employee && <div className="sm:col-span-2">
+            <span className={labelCls}>Console access · {form.permissions.length} selected</span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {ADMIN_PERMISSION_OPTIONS.map(([key, label]) => {
+                const checked = form.permissions.includes(key);
+                return <button key={key} type="button" onClick={() => set("permissions", checked ? form.permissions.filter((item) => item !== key) : [...form.permissions, key])} className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${checked ? "border-violet-600 bg-violet-600 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-violet-300"}`}>{checked ? "✓ " : ""}{label}</button>;
+              })}
+            </div>
+          </div>}
+          <label className={`${labelCls} sm:col-span-2`}>Set a new password <span className="normal-case tracking-normal text-slate-400">(optional; leave blank to keep current password)</span>
+            <input type="password" autoComplete="new-password" minLength="12" maxLength="128" value={form.password} onChange={(event) => set("password", event.target.value)} className={`${inputCls} mt-1.5`} placeholder="At least 12 characters" />
+          </label>
           <label className="sm:col-span-2 flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-            <input type="checkbox" checked={form.is_active} onChange={(event) => set("is_active", event.target.checked)} className="h-4 w-4 accent-violet-600" />
+            <input type="checkbox" checked={form.is_active} disabled={owner} onChange={(event) => { set("is_active", event.target.checked); if (!event.target.checked) set("is_available", false); }} className="h-4 w-4 accent-violet-600" />
             <span><b className="block text-sm text-slate-800">Account active</b><small className="text-xs font-medium normal-case tracking-normal text-slate-500">Inactive accounts cannot access their account.</small></span>
+          </label>
+          <label className="sm:col-span-2 flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+            <input type="checkbox" checked={form.is_verified} onChange={(event) => set("is_verified", event.target.checked)} className="h-4 w-4 accent-violet-600" />
+            <span><b className="block text-sm text-slate-800">Email verified</b><small className="text-xs font-medium normal-case tracking-normal text-slate-500">Controls the account’s verified status.</small></span>
           </label>
           {error && <p role="alert" className="sm:col-span-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</p>}
         </div>
         <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/70 px-6 py-4 sm:px-8">
           <button type="button" onClick={onClose} disabled={busy} className={cancelBtn}>Cancel</button>
-          <button type="submit" disabled={busy} className={btn.primary}>{busy ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Save changes</button>
+          <button type="submit" disabled={busy || photoBusy} className={btn.primary}>{busy ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Save changes</button>
         </div>
       </form>
     </Overlay>
@@ -372,6 +460,11 @@ export default function AdminProfilesPage() {
   const [selected, setSelected] = useState(null);
   const [photo, setPhoto] = useState("");
   const [editing, setEditing] = useState(null);
+  const [editingPhoto, setEditingPhoto] = useState(null);
+  const [editOptions, setEditOptions] = useState({ cities: [], categories: [] });
+  const [editLoading, setEditLoading] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(null);
   const [mutating, setMutating] = useState(false);
   const [mutationError, setMutationError] = useState("");
@@ -406,28 +499,49 @@ export default function AdminProfilesPage() {
     }
   };
 
-  const editProfile = (item) => {
+  const editProfile = async (item) => {
     setSelected(null);
-    setMutationError("");
-    setEditing(item);
+    setMutationError(""); setPhotoError(""); setEditingPhoto(null); setEditLoading(true);
+    try {
+      const [photoResult, partnerOptions] = await Promise.all([
+        apiRequest(`/admin/profiles/${item.id}/photo`, { token }).catch(() => ({ profile_photo: null })),
+        item.role === "partner" ? apiRequest("/admin/professionals", { token }) : Promise.resolve(null),
+      ]);
+      let fullProfile = item;
+      if (item.role === "partner" && partnerOptions) {
+        const record = (partnerOptions.professionals || []).find((row) => String(row.id) === String(item.professional?.id));
+        if (record) fullProfile = { ...item, professional: { ...item.professional, ...record, city: record.city || item.professional?.city } };
+        const cities = [...(partnerOptions.cities || [])];
+        const currentCity = fullProfile.professional?.city;
+        if (currentCity && !cities.some((city) => String(city.id) === String(currentCity.id))) cities.push(currentCity);
+        const categories = [...(partnerOptions.categories || [])];
+        for (const category of fullProfile.professional?.categories || []) {
+          if (!categories.some((item) => String(item.id) === String(category.id))) categories.push(category);
+        }
+        setEditOptions({ cities, categories });
+      } else setEditOptions({ cities: [], categories: [] });
+      setEditing(fullProfile);
+      setEditingPhoto(photoResult.profile_photo || null);
+    } catch (e) { setMutationError(e.message || "Could not load profile details."); }
+    finally { setEditLoading(false); }
   };
 
   const saveProfile = async (form) => {
     if (!editing) return;
     setMutating(true); setMutationError("");
-    const body = editing.role === "employee"
-      ? { full_name: form.full_name, phone: form.phone || null, is_active: form.is_active }
-      : editing.role === "partner"
-        ? { full_name: form.full_name, email: form.email, phone: form.phone || null, is_active: form.is_active }
-        : { full_name: form.full_name, email: form.email, phone: form.phone || null, address_line: form.address_line || null, city: form.city || null, pincode: form.pincode || null, is_active: form.is_active };
-    const path = editing.role === "employee"
-      ? `/admin/team/${editing.id}`
-      : editing.role === "partner"
-        ? `/admin/professionals/${editing.professional?.id}`
-        : `/admin/customers/${editing.id}`;
+    const body = {
+      full_name: form.full_name, email: form.email, phone: form.phone || null,
+      address_line: form.address_line || null, city: form.city || null, pincode: form.pincode || null,
+      is_active: form.is_active, is_verified: form.is_verified,
+      ...(form.password ? { password: form.password } : {}),
+      ...(editing.role === "partner" ? {
+        city_id: form.city_id || null, bio: form.bio || null, experience_years: Number(form.experience_years || 0),
+        category_ids: form.category_ids, verification_status: form.verification_status, is_available: form.is_available,
+      } : {}),
+      ...(editing.role === "employee" ? { permissions: form.permissions } : {}),
+    };
     try {
-      if (editing.role === "partner" && !editing.professional?.id) throw new Error("Partner record is missing, so this profile cannot be edited here.");
-      await apiRequest(path, { token, method: "PATCH", body: JSON.stringify(body) });
+      await apiRequest(`/admin/profiles/${editing.id}`, { token, method: "PATCH", body: JSON.stringify(body) });
       setEditing(null); setSelected(null); await load();
     } catch (e) { setMutationError(e.message || "Could not save profile changes."); }
     finally { setMutating(false); }
@@ -465,13 +579,37 @@ export default function AdminProfilesPage() {
     finally { setMutating(false); }
   };
 
-  const profileActions = (item) => item.role === "admin" ? null : (
+  const uploadProfilePhoto = async (file) => {
+    if (!editing) return;
+    setPhotoBusy(true); setPhotoError("");
+    try {
+      const image = await compressPhoto(file);
+      const result = await apiRequest(`/admin/profiles/${editing.id}/photo`, { token, method: "PUT", body: JSON.stringify({ photo: image }) });
+      setEditingPhoto(result.profile_photo || image);
+      await load();
+    } catch (e) { setPhotoError(e.message || "Could not upload this photo."); }
+    finally { setPhotoBusy(false); }
+  };
+
+  const removeProfilePhoto = async () => {
+    if (!editing) return;
+    setPhotoBusy(true); setPhotoError("");
+    try {
+      await apiRequest(`/admin/profiles/${editing.id}/photo`, { token, method: "DELETE" });
+      setEditingPhoto(null); await load();
+    } catch (e) { setPhotoError(e.message || "Could not remove this photo."); }
+    finally { setPhotoBusy(false); }
+  };
+
+  const profileActions = (item) => item.role === "admin" ? (
+    <div className="flex items-center gap-1.5"><button onClick={() => editProfile(item)} disabled={editLoading || mutating} className={btn.ghost} title="Edit owner profile"><Pencil size={14} /><span className="hidden sm:inline">Edit</span></button></div>
+  ) : (
     <div className="flex flex-wrap items-center justify-end gap-1.5">
       {item.account_status === "deleted" ? (
         <button onClick={() => restoreProfile(item)} disabled={mutating} className={btn.ghost} title="Restore account"><RotateCcw size={14} /><span className="hidden sm:inline">Restore</span></button>
       ) : (
         <>
-          <button onClick={() => editProfile(item)} disabled={mutating} className={btn.ghost} title="Edit profile"><Pencil size={14} /><span className="hidden sm:inline">Edit</span></button>
+          <button onClick={() => editProfile(item)} disabled={editLoading || mutating} className={btn.ghost} title="Edit profile"><Pencil size={14} /><span className="hidden sm:inline">Edit</span></button>
           <button onClick={() => { setMutationError(""); setConfirmRemove(item); }} disabled={mutating} className={btn.danger} title="Remove profile"><Trash2 size={14} /><span className="hidden sm:inline">Remove</span></button>
         </>
       )}
@@ -767,7 +905,7 @@ export default function AdminProfilesPage() {
         )}
 
         {selected && <ProfileModal profile={selected} photo={photo} onClose={() => setSelected(null)} onEdit={editProfile} onRemove={(item) => { setMutationError(""); setConfirmRemove(item); }} onRestore={restoreProfile} />}
-        {editing && <EditProfileModal profile={editing} onClose={() => { if (!mutating) { setEditing(null); setMutationError(""); } }} onSave={saveProfile} busy={mutating} error={mutationError} />}
+        {editing && <EditProfileModal profile={editing} photo={editingPhoto} cities={editOptions.cities} categories={editOptions.categories} onClose={() => { if (!mutating && !photoBusy) { setEditing(null); setMutationError(""); setPhotoError(""); } }} onSave={saveProfile} onPhotoUpload={uploadProfilePhoto} onPhotoRemove={removeProfilePhoto} busy={mutating} photoBusy={photoBusy} error={mutationError} photoError={photoError} />}
         {confirmRemove && (
           <Overlay onClose={() => { if (!mutating) { setConfirmRemove(null); setMutationError(""); } }}>
             <div className="p-6 sm:p-8">
