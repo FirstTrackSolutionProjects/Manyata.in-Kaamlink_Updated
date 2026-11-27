@@ -1,6 +1,6 @@
 
 import { Link } from "react-router-dom";
-import { Phone, ArrowUpRight, MapPin } from "lucide-react";
+import { Mail, Phone, ArrowUpRight, MapPin } from "lucide-react";
 import { FaFacebookF, FaInstagram, FaTwitter } from "react-icons/fa";
 
 const SERVICE_LINKS = [
@@ -57,6 +57,7 @@ const OFFICE_LOCATIONS = [
     name: "Kolkata Branch",
     address: "Baruipur, near HP Petrol Pump, Kolkata, West Bengal – 700144",
     phones: ["+91 9827951364", "+91 8114721300"],
+    email: "info@manyata.in",
   },
 ];
 
@@ -180,6 +181,12 @@ export default function Footer() {
                       {phone}
                     </a>
                   ))}
+                {office.email && (
+                  <a href={`mailto:${office.email}`} className="flex items-center gap-2 break-all text-xs text-ivory/70 transition-colors hover:text-ivory">
+                    <Mail size={12} className="shrink-0 text-brand-400" />
+                    {office.email}
+                  </a>
+                )}
                 </div>
               </section>
             ))}
