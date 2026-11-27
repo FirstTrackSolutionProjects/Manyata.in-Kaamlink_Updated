@@ -1,6 +1,6 @@
 
 import { Link } from "react-router-dom";
-import { Mail, Phone, ArrowUpRight, MapPin } from "lucide-react";
+import { Phone, ArrowUpRight, MapPin } from "lucide-react";
 import { FaFacebookF, FaInstagram, FaTwitter } from "react-icons/fa";
 
 const SERVICE_LINKS = [
@@ -30,6 +30,34 @@ const SOCIALS = [
   { Icon: FaFacebookF, href: "#top", label: "Facebook" },
   { Icon: FaInstagram, href: "#top", label: "Instagram" },
   { Icon: FaTwitter, href: "#top", label: "Twitter" },
+];
+
+const OFFICE_LOCATIONS = [
+  {
+    name: "Registered Office",
+    address: "Dagarapada, Khaira, Baleswar, Odisha – 756047",
+    phones: ["+91 8114721300", "+91 9827951364"],
+  },
+  {
+    name: "Head Office",
+    address: "College Square, Soro, Balasore, Odisha – 756045",
+    phones: ["+91 9827951364", "+91 8114721300"],
+  },
+  {
+    name: "Corporate Office",
+    address: "Saheed Nagar, Bhubaneswar, Odisha – 751007",
+    phones: ["+91 8114721300", "+91 9827951364"],
+  },
+  {
+    name: "Rourkela Branch",
+    address: "Bisra Road, near Arundhati Jewellers, Rourkela, Sundargarh, Odisha – 770036",
+    phones: ["+91 9827951364", "+91 8114721300"],
+  },
+  {
+    name: "Kolkata Branch",
+    address: "Baruipur, near HP Petrol Pump, Kolkata, West Bengal – 700144",
+    phones: ["+91 9827951364", "+91 8114721300"],
+  },
 ];
 
 export default function Footer() {
@@ -133,62 +161,33 @@ export default function Footer() {
         </div>
 
         {/* Contact */}
-        <div>
+        <div className="col-span-2 border-t border-white/10 pt-6 md:col-span-6">
           <p className="mb-4 text-sm font-semibold text-ivory">
             Get in touch
           </p>
-
-          <ul className="space-y-3 text-sm text-ivory/60">
-            <li>
-              <a
-                href="tel:+918114721300"
-                className="flex items-center gap-2 transition-colors hover:text-ivory"
-              >
-                <Phone size={14} className="shrink-0 text-brand-400" />
-                +91 8114721300
-              </a>
-            </li>
-
-            <li>
-              <a
-                href="tel:+919827951364"
-                className="flex items-center gap-2 transition-colors hover:text-ivory"
-              >
-                <Phone size={14} className="shrink-0 text-brand-400" />
-                +91 9827951364
-              </a>
-            </li>
-
-            <li>
-              <a
-                href="mailto:info@manyata.in"
-                className="flex items-center gap-2 transition-colors hover:text-ivory"
-              >
-                <Mail size={14} className="shrink-0 text-brand-400" />
-                info@manyata.in
-              </a>
-            </li>
-
-            <li className="flex items-start gap-2">
-              <MapPin size={14} className="mt-0.5 shrink-0 text-brand-400" />
-              <span>
-                <span className="block font-medium text-ivory">Kolkata Branch</span>
-                <span className="block leading-relaxed">
-                  Baruipur, near HP Petrol Pump, Kolkata, West Bengal – 700144
-                </span>
-              </span>
-            </li>
-
-            <li>
-              <Link
-                to="/contact"
-                className="mt-1 inline-flex items-center gap-1 font-medium text-brand-400 transition-colors hover:text-coral-400"
-              >
-                Book a service
-                <ArrowUpRight size={14} />
-              </Link>
-            </li>
-          </ul>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {OFFICE_LOCATIONS.map((office) => (
+              <section key={office.name} className="min-w-0">
+                <div className="flex items-center gap-2 text-sm font-semibold text-ivory">
+                  <MapPin size={14} className="shrink-0 text-brand-400" />
+                  {office.name}
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-ivory/60">{office.address}</p>
+                <div className="mt-2 space-y-1.5">
+                  {office.phones.map((phone) => (
+                    <a key={phone} href={`tel:${phone.replace(/\s/g, "")}`} className="flex items-center gap-2 text-xs text-ivory/70 transition-colors hover:text-ivory">
+                      <Phone size={12} className="shrink-0 text-brand-400" />
+                      {phone}
+                    </a>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+          <Link to="/contact" className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-brand-400 transition-colors hover:text-coral-400">
+            Book a service
+            <ArrowUpRight size={14} />
+          </Link>
         </div>
       </div>
 
